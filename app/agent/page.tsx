@@ -42,12 +42,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const TYPE_ICONS: Record<string, string> = {
-  info: '●',
-  decision: '◆',
-  action: '▶',
-  success: '✓',
-  warning: '⚠',
-  error: '✕',
+  info: '●', decision: '◆', action: '▶', success: '✓', warning: '⚠', error: '✕',
 };
 
 export default function AgentPage() {
@@ -81,9 +76,7 @@ export default function AgentPage() {
     setLogs(prev => [...prev.slice(-100), {
       id: shortId(),
       timestamp: new Date().toLocaleTimeString(),
-      type,
-      message,
-      txHash,
+      type, message, txHash,
     }]);
   }
 
@@ -100,17 +93,14 @@ export default function AgentPage() {
   async function runCycle() {
     setCycleCount(c => c + 1);
     addLog('info', 'Agent cycle started — fetching live rates...');
-
     const rates = await fetchRates();
     if (Object.keys(rates).length === 0) {
       addLog('error', 'Failed to fetch rates — retrying next cycle');
       return;
     }
-
     setLiveRates(rates);
     const rateLines = CURRENCIES.map(c => `${c}: ${(rates[c] ?? 0).toFixed(2)}`).join(' · ');
     addLog('info', `Rates fetched → ${rateLines}`);
-
     setRules(prev => {
       const updated = [...prev];
       for (let i = 0; i < updated.length; i++) {
@@ -120,7 +110,6 @@ export default function AgentPage() {
         if (currentRate === 0) continue;
         const conditionMet = rule.condition === 'above' ? currentRate > rule.targetRate : currentRate < rule.targetRate;
         addLog('decision', `Evaluating: ${rule.currency} ${rule.condition} ${rule.targetRate} → current: ${currentRate.toFixed(2)} → ${conditionMet ? 'CONDITION MET ✓' : 'not yet'}`);
-
         if (conditionMet) {
           updated[i] = { ...rule, triggered: true };
           if (rule.action === 'convert' && rule.recipientWallet) {
@@ -182,73 +171,95 @@ export default function AgentPage() {
   }
 
   return (
-    <div style={{ padding: '24px 24px 60px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+    <>
+      <style>{`
+        .agent-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+        .agent-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+        .rule-form-grid { display: flex; gap: 8px; }
+        @media (max-width: 1024px) {
+          .agent-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+          .agent-stats { grid-template-columns: repeat(2, 1fr); }
+          .agent-page { padding: 16px 16px 60px !important; }
+          .rule-form-grid { flex-direction: column; }
+        }
+      `}</style>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · AGENTIC ECONOMY</div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>
-            Auto-Rate Agent
-            {running && <span style={{ marginLeft: 12, fontSize: 13, color: '#00ff88', fontWeight: 400 }}>● RUNNING</span>}
-          </h1>
-          <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)' }}>Autonomous agent that monitors live rates and triggers USDC payments on Arc when conditions are met</p>
-        </div>
-        <div>
-          {!running
-            ? <button onClick={startAgent} className="btn btn-green" style={{ fontSize: 13, padding: '10px 24px' }}>▶ START AGENT</button>
-            : <button onClick={stopAgent} className="btn btn-amber" style={{ fontSize: 13, padding: '10px 24px' }}>⏹ STOP AGENT</button>
-          }
-        </div>
-      </div>
+      <div className="agent-page" style={{ padding: '24px 24px 60px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-        {[
-          { label: 'AGENT STATUS', value: running ? 'RUNNING' : 'STOPPED', color: running ? '#00ff88' : 'rgba(232,240,232,0.3)' },
-          { label: 'CYCLES RUN', value: String(cycleCount), color: '#00aaff' },
-          { label: 'TX EXECUTED', value: String(totalTx), color: '#00ff88' },
-          { label: 'USDC MOVED', value: `$${totalUSDC}`, color: '#ffaa00' },
-        ].map(s => (
-          <div key={s.label} className="panel" style={{ padding: 16 }}>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.15em', marginBottom: 6 }}>{s.label}</div>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 20, color: s.color }}>{s.value}</div>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · AGENTIC ECONOMY</div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>
+              Auto-Rate Agent
+              {running && <span style={{ marginLeft: 12, fontSize: 13, color: '#00ff88', fontWeight: 400 }}>● RUNNING</span>}
+            </h1>
+            <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)', maxWidth: 500 }}>
+              Autonomous agent that monitors live rates and triggers USDC payments on Arc when conditions are met
+            </p>
           </div>
-        ))}
-      </div>
+          <div>
+            {!running
+              ? <button onClick={startAgent} className="btn btn-green" style={{ fontSize: 13, padding: '10px 24px' }}>▶ START AGENT</button>
+              : <button onClick={stopAgent} className="btn btn-amber" style={{ fontSize: 13, padding: '10px 24px' }}>⏹ STOP AGENT</button>
+            }
+          </div>
+        </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
-
-        {/* Left — rates + log */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {Object.keys(liveRates).length > 0 && (
-            <div className="panel" style={{ padding: '12px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>LIVE</span>
-                {CURRENCIES.map(c => (
-                  <span key={c} style={{ fontFamily: 'Space Mono, monospace', fontSize: 11 }}>
-                    <span style={{ color: 'rgba(232,240,232,0.4)' }}>{c} </span>
-                    <span style={{ color: '#00ff88', fontWeight: 700 }}>{(liveRates[c] ?? 0).toFixed(2)}</span>
-                  </span>
-                ))}
-              </div>
+        {/* Stats */}
+        <div className="agent-stats">
+          {[
+            { label: 'AGENT STATUS', value: running ? 'RUNNING' : 'STOPPED', color: running ? '#00ff88' : 'rgba(232,240,232,0.3)' },
+            { label: 'CYCLES RUN', value: String(cycleCount), color: '#00aaff' },
+            { label: 'TX EXECUTED', value: String(totalTx), color: '#00ff88' },
+            { label: 'USDC MOVED', value: `$${totalUSDC}`, color: '#ffaa00' },
+          ].map(s => (
+            <div key={s.label} className="panel" style={{ padding: 16 }}>
+              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.15em', marginBottom: 6 }}>{s.label}</div>
+              <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 18, color: s.color }}>{s.value}</div>
             </div>
-          )}
+          ))}
+        </div>
 
+        {/* Live rates ticker */}
+        {Object.keys(liveRates).length > 0 && (
+          <div className="panel" style={{ padding: '12px 16px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>LIVE</span>
+              {CURRENCIES.map(c => (
+                <span key={c} style={{ fontFamily: 'Space Mono, monospace', fontSize: 11 }}>
+                  <span style={{ color: 'rgba(232,240,232,0.4)' }}>{c} </span>
+                  <span style={{ color: '#00ff88', fontWeight: 700 }}>{(liveRates[c] ?? 0).toFixed(2)}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="agent-grid">
+
+          {/* Left — log */}
           <div className="panel" style={{ overflow: 'hidden' }}>
             <div className="panel-header">
-              <div className="panel-title">AGENT LOG</div>
+              <div className="panel-title">
+                {running && <span className="live-dot" style={{ width: 6, height: 6 }} />}
+                AGENT LOG
+              </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{logs.length} ENTRIES</span>
                 <button onClick={() => setLogs([])} className="btn btn-ghost" style={{ fontSize: 10, padding: '4px 10px' }}>CLEAR</button>
               </div>
             </div>
-            <div style={{ height: 420, overflowY: 'auto', fontFamily: 'Space Mono, monospace', fontSize: 11, lineHeight: 1.8, padding: 16, background: 'rgba(0,0,0,0.3)' }}>
+            <div style={{ height: 400, overflowY: 'auto', fontFamily: 'Space Mono, monospace', fontSize: 11, lineHeight: 1.8, padding: 16, background: 'rgba(0,0,0,0.3)' }}>
               {logs.length === 0 ? (
-                <div style={{ color: 'rgba(232,240,232,0.25)', textAlign: 'center', paddingTop: 40 }}>Start the agent to see live decision logs...</div>
+                <div style={{ color: 'rgba(232,240,232,0.25)', textAlign: 'center', paddingTop: 40 }}>
+                  Start the agent to see live decision logs...
+                </div>
               ) : (
                 logs.map(log => (
-                  <div key={log.id} style={{ padding: '3px 8px', borderRadius: 4, marginBottom: 2 }}>
+                  <div key={log.id} style={{ padding: '3px 8px', borderRadius: 4, marginBottom: 2, wordBreak: 'break-word' }}>
                     <span style={{ color: 'rgba(232,240,232,0.25)', marginRight: 8 }}>{log.timestamp}</span>
                     <span style={{ color: TYPE_COLORS[log.type], marginRight: 6 }}>{TYPE_ICONS[log.type]}</span>
                     <span style={{ color: TYPE_COLORS[log.type] }}>{log.message}</span>
@@ -264,111 +275,111 @@ export default function AgentPage() {
               <div ref={logsEndRef} />
             </div>
           </div>
-        </div>
 
-        {/* Right — rules */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="panel">
-            <div className="panel-header">
-              <div className="panel-title">AGENT RULES</div>
-              <button onClick={() => setShowAddRule(!showAddRule)} className="btn btn-green" style={{ fontSize: 10, padding: '5px 12px' }}>
-                {showAddRule ? '✕' : '+ ADD'}
-              </button>
-            </div>
+          {/* Right — rules */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="panel">
+              <div className="panel-header">
+                <div className="panel-title">AGENT RULES</div>
+                <button onClick={() => setShowAddRule(!showAddRule)} className="btn btn-green" style={{ fontSize: 10, padding: '5px 12px' }}>
+                  {showAddRule ? '✕' : '+ ADD'}
+                </button>
+              </div>
 
-            {showAddRule && (
-              <div style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,255,136,0.02)' }}>
-                <div style={{ marginBottom: 10 }}>
-                  <label className="label">CURRENCY</label>
-                  <select className="select" value={newRule.currency} onChange={e => setNewRule(p => ({ ...p, currency: e.target.value }))}>
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  <div style={{ flex: 1 }}>
-                    <label className="label">CONDITION</label>
-                    <select className="select" value={newRule.condition} onChange={e => setNewRule(p => ({ ...p, condition: e.target.value as 'above' | 'below' }))}>
-                      <option value="above">Above</option>
-                      <option value="below">Below</option>
+              {showAddRule && (
+                <div style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,255,136,0.02)' }}>
+                  <div style={{ marginBottom: 10 }}>
+                    <label className="label">CURRENCY</label>
+                    <select className="select" value={newRule.currency} onChange={e => setNewRule(p => ({ ...p, currency: e.target.value }))}>
+                      {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <label className="label">TARGET RATE</label>
-                    <input className="input" type="number" placeholder="1600" value={newRule.targetRate} onChange={e => setNewRule(p => ({ ...p, targetRate: e.target.value }))} />
+                  <div className="rule-form-grid" style={{ marginBottom: 10 }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="label">CONDITION</label>
+                      <select className="select" value={newRule.condition} onChange={e => setNewRule(p => ({ ...p, condition: e.target.value as 'above' | 'below' }))}>
+                        <option value="above">Above</option>
+                        <option value="below">Below</option>
+                      </select>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label className="label">TARGET RATE</label>
+                      <input className="input" type="number" placeholder="1600" value={newRule.targetRate} onChange={e => setNewRule(p => ({ ...p, targetRate: e.target.value }))} />
+                    </div>
                   </div>
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <label className="label">ACTION</label>
-                  <select className="select" value={newRule.action} onChange={e => setNewRule(p => ({ ...p, action: e.target.value as 'convert' | 'alert' }))}>
-                    <option value="convert">Auto-convert USDC</option>
-                    <option value="alert">Alert only</option>
-                  </select>
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <label className="label">AMOUNT (USDC)</label>
-                  <input className="input" type="number" placeholder="100" value={newRule.amount} onChange={e => setNewRule(p => ({ ...p, amount: e.target.value }))} />
-                </div>
-                {newRule.action === 'convert' && (
                   <div style={{ marginBottom: 10 }}>
-                    <label className="label">RECIPIENT WALLET</label>
-                    <input className="input" placeholder="0x..." value={newRule.recipientWallet} onChange={e => setNewRule(p => ({ ...p, recipientWallet: e.target.value }))} />
+                    <label className="label">ACTION</label>
+                    <select className="select" value={newRule.action} onChange={e => setNewRule(p => ({ ...p, action: e.target.value as 'convert' | 'alert' }))}>
+                      <option value="convert">Auto-convert USDC</option>
+                      <option value="alert">Alert only</option>
+                    </select>
                   </div>
-                )}
-                <button onClick={addRule} className="btn btn-green" style={{ width: '100%', fontSize: 11 }}>ADD RULE</button>
-              </div>
-            )}
-
-            <div>
-              {rules.map(rule => (
-                <div key={rule.id} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: rule.triggered ? 'rgba(0,255,136,0.04)' : 'transparent', opacity: rule.active ? 1 : 0.5 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: '#e8f0e8' }}>
-                      {rule.currency} {rule.condition} {rule.targetRate.toLocaleString()}
-                    </span>
-                    {rule.triggered
-                      ? <span className="badge badge-green" style={{ fontSize: 9 }}>TRIGGERED</span>
-                      : <span className="badge badge-amber" style={{ fontSize: 9 }}>WATCHING</span>
-                    }
+                  <div style={{ marginBottom: 10 }}>
+                    <label className="label">AMOUNT (USDC)</label>
+                    <input className="input" type="number" placeholder="100" value={newRule.amount} onChange={e => setNewRule(p => ({ ...p, amount: e.target.value }))} />
                   </div>
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.35)', marginBottom: 6 }}>
-                    {rule.action === 'convert' ? `→ Auto-send ${rule.amount} USDC` : `→ Alert only`}
-                  </div>
-                  {liveRates[rule.currency] && (
-                    <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', marginBottom: 6 }}>
-                      Current: {(liveRates[rule.currency] ?? 0).toFixed(2)}
+                  {newRule.action === 'convert' && (
+                    <div style={{ marginBottom: 10 }}>
+                      <label className="label">RECIPIENT WALLET</label>
+                      <input className="input" placeholder="0x..." value={newRule.recipientWallet} onChange={e => setNewRule(p => ({ ...p, recipientWallet: e.target.value }))} />
                     </div>
                   )}
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button onClick={() => setRules(prev => prev.map(r => r.id === rule.id ? { ...r, active: !r.active } : r))} className="btn btn-ghost" style={{ fontSize: 9, padding: '3px 8px' }}>
-                      {rule.active ? 'DISABLE' : 'ENABLE'}
-                    </button>
-                    {rule.triggered && (
-                      <button onClick={() => setRules(prev => prev.map(r => r.id === rule.id ? { ...r, triggered: false } : r))} className="btn btn-blue" style={{ fontSize: 9, padding: '3px 8px' }}>RESET</button>
+                  <button onClick={addRule} className="btn btn-green" style={{ width: '100%', fontSize: 11 }}>ADD RULE</button>
+                </div>
+              )}
+
+              <div>
+                {rules.map(rule => (
+                  <div key={rule.id} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: rule.triggered ? 'rgba(0,255,136,0.04)' : 'transparent', opacity: rule.active ? 1 : 0.5 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+                      <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: '#e8f0e8' }}>
+                        {rule.currency} {rule.condition} {rule.targetRate.toLocaleString()}
+                      </span>
+                      {rule.triggered
+                        ? <span className="badge badge-green" style={{ fontSize: 9 }}>TRIGGERED</span>
+                        : <span className="badge badge-amber" style={{ fontSize: 9 }}>WATCHING</span>
+                      }
+                    </div>
+                    <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.35)', marginBottom: 6 }}>
+                      {rule.action === 'convert' ? `→ Auto-send ${rule.amount} USDC` : `→ Alert only`}
+                    </div>
+                    {liveRates[rule.currency] && (
+                      <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', marginBottom: 6 }}>
+                        Current: {(liveRates[rule.currency] ?? 0).toFixed(2)}
+                      </div>
                     )}
-                    <button onClick={() => setRules(prev => prev.filter(r => r.id !== rule.id))} className="btn btn-ghost" style={{ fontSize: 9, padding: '3px 8px', color: '#ff3355' }}>DELETE</button>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button onClick={() => setRules(prev => prev.map(r => r.id === rule.id ? { ...r, active: !r.active } : r))} className="btn btn-ghost" style={{ fontSize: 9, padding: '3px 8px' }}>
+                        {rule.active ? 'DISABLE' : 'ENABLE'}
+                      </button>
+                      {rule.triggered && (
+                        <button onClick={() => setRules(prev => prev.map(r => r.id === rule.id ? { ...r, triggered: false } : r))} className="btn btn-blue" style={{ fontSize: 9, padding: '3px 8px' }}>RESET</button>
+                      )}
+                      <button onClick={() => setRules(prev => prev.filter(r => r.id !== rule.id))} className="btn btn-ghost" style={{ fontSize: 9, padding: '3px 8px', color: '#ff3355' }}>DELETE</button>
+                    </div>
                   </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="panel" style={{ padding: 16 }}>
+              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00ff88', letterSpacing: '0.15em', marginBottom: 10 }}>🤖 AGENT INFO</div>
+              {[
+                { label: 'Wallet', value: AGENT_WALLET },
+                { label: 'Cycle', value: '30 seconds' },
+                { label: 'Network', value: 'Arc Testnet' },
+                { label: 'Method', value: 'kit.send()' },
+                { label: 'Data', value: 'ExchangeRate API' },
+              ].map(i => (
+                <div key={i.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{i.label}</span>
+                  <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, fontWeight: 700, color: '#e8f0e8' }}>{i.value}</span>
                 </div>
               ))}
             </div>
           </div>
-
-          <div className="panel" style={{ padding: 16 }}>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00ff88', letterSpacing: '0.15em', marginBottom: 10 }}>🤖 AGENT INFO</div>
-            {[
-              { label: 'Wallet', value: AGENT_WALLET },
-              { label: 'Cycle', value: '30 seconds' },
-              { label: 'Network', value: 'Arc Testnet' },
-              { label: 'Method', value: 'kit.send()' },
-              { label: 'Data', value: 'ExchangeRate API' },
-            ].map(i => (
-              <div key={i.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{i.label}</span>
-                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, fontWeight: 700, color: '#e8f0e8' }}>{i.value}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
