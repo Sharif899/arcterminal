@@ -406,7 +406,7 @@ export default function AgentPage() {
                         Current: {(liveRates[rule.currency] ?? 0).toFixed(2)}
                       </div>
                     )}
-                    <div style={{ display: 'flex', gap: 6' }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
                       <button
                         onClick={() => setRules(prev => prev.map(r => r.id === rule.id ? { ...r, active: !r.active } : r))}
                         className="btn btn-ghost"
