@@ -17,8 +17,8 @@ const links = [
   { href: "/payroll", label: "PAYROLL" },
   { href: "/storefront", label: "STOREFRONT" },
   { href: "/tickets", label: "TICKETS" },
-{ href: "/agent", label: "AGENT" },
-{ href: "/nanopay", label: "NANOPAY" },
+  { href: "/agent", label: "AGENT" },
+  { href: "/nanopay", label: "NANOPAY" },
 ];
 
 export default function Nav() {
@@ -94,23 +94,13 @@ export default function Nav() {
           border-top: 1px solid rgba(0,255,136,0.08);
           margin-top: 8px;
         }
-
         @media (max-width: 768px) {
-          .nav-links-desktop {
-            display: none;
-          }
-          .nav-wallet-desktop {
-            display: none;
-          }
-          .hamburger {
-            display: flex;
-          }
+          .nav-links-desktop { display: none; }
+          .nav-wallet-desktop { display: none; }
+          .hamburger { display: flex; }
         }
-
         @media (max-width: 480px) {
-          .nav-logo-subtitle {
-            display: none;
-          }
+          .nav-logo-subtitle { display: none; }
         }
       `}</style>
 
@@ -122,8 +112,12 @@ export default function Nav() {
 
           {/* Logo */}
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(0,255,136,0.2)" }}>
-              <img src="/arc_logo.jpeg" alt="Arc" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, border: "1px solid rgba(0,255,136,0.3)", background: "#040608", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <polygon points="11,2 20,18 2,18" fill="none" stroke="#00ff88" strokeWidth="1.8" strokeLinejoin="round"/>
+                <line x1="11" y1="8" x2="11" y2="14" stroke="#00ff88" strokeWidth="1.8" strokeLinecap="round"/>
+                <circle cx="11" cy="16" r="1" fill="#00ff88"/>
+              </svg>
             </div>
             <div>
               <div style={{ fontFamily: "Space Mono, monospace", fontWeight: 700, fontSize: 13, letterSpacing: "0.08em", color: "#00ff88" }}>ARC TERMINAL</div>
