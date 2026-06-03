@@ -107,16 +107,22 @@ export default function Nav() {
       <div style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(4,6,8,0.97)", borderBottom: "1px solid rgba(0,255,136,0.12)", backdropFilter: "blur(20px)" }}>
         <NetworkTicker />
 
-        {/* Main nav bar */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", height: 56 }}>
 
           {/* Logo */}
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
             <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, border: "1px solid rgba(0,255,136,0.3)", background: "#040608", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <polygon points="11,2 20,18 2,18" fill="none" stroke="#00ff88" strokeWidth="1.8" strokeLinejoin="round"/>
-                <line x1="11" y1="8" x2="11" y2="14" stroke="#00ff88" strokeWidth="1.8" strokeLinecap="round"/>
-                <circle cx="11" cy="16" r="1" fill="#00ff88"/>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Globe */}
+                <circle cx="12" cy="12" r="8.5" stroke="#00ff88" strokeWidth="1.4"/>
+                {/* Vertical ellipse */}
+                <ellipse cx="12" cy="12" rx="3.5" ry="8.5" stroke="#00ff88" strokeWidth="1" opacity="0.45"/>
+                {/* Top arc */}
+                <path d="M4 9 Q12 7 20 9" stroke="#00ff88" strokeWidth="1" opacity="0.45" fill="none"/>
+                {/* Bottom arc */}
+                <path d="M4 15 Q12 17 20 15" stroke="#00ff88" strokeWidth="1" opacity="0.45" fill="none"/>
+                {/* Payment arrow */}
+                <path d="M7.5 12.8 L10.2 10 L10.2 11.5 L16.5 11.5 L16.5 13.5 L10.2 13.5 L10.2 15 Z" fill="#00ff88"/>
               </svg>
             </div>
             <div>
@@ -148,7 +154,7 @@ export default function Nav() {
             <WalletConnector />
           </div>
 
-          {/* Hamburger (mobile only) */}
+          {/* Hamburger */}
           <button
             className={`hamburger${menuOpen ? ' open' : ''}`}
             onClick={() => setMenuOpen(!menuOpen)}
@@ -160,7 +166,7 @@ export default function Nav() {
           </button>
         </div>
 
-        {/* Mobile dropdown menu */}
+        {/* Mobile menu */}
         <div className={`mobile-menu${menuOpen ? ' open' : ''}`}>
           {links.map(({ href, label }) => {
             const active = href === "/" ? path === "/" : path.startsWith(href);
