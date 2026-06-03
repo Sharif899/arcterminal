@@ -18,6 +18,7 @@ const links = [
   { href: "/storefront", label: "STOREFRONT" },
   { href: "/tickets", label: "TICKETS" },
 { href: "/agent", label: "AGENT" },
+{ href: "/nanopay", label: "NANOPAY" },
 ];
 
 export default function Nav() {
