@@ -41,12 +41,12 @@ function shortId() {
 }
 
 const DEMO_SERVICES: NanoService[] = [
-  { id: shortId(), name: 'Arc Price Oracle', description: 'Real-time USDC price feeds. Pay per query.', pricePerCall: 0.01, category: 'Data', icon: '📡', calls: 0, earned: 0, wallet: '0x1234567890abcdef1234567890abcdef12345678' },
-  { id: shortId(), name: 'AI Translation API', description: 'Translate text to any language. Pay per call.', pricePerCall: 0.01, category: 'AI', icon: '🌍', calls: 0, earned: 0, wallet: '0xabcdef1234567890abcdef1234567890abcdef12' },
-  { id: shortId(), name: 'KYC Verification', description: 'Instant wallet risk scoring. Pay per check.', pricePerCall: 0.05, category: 'Compliance', icon: '🔒', calls: 0, earned: 0, wallet: '0x2345678901abcdef2345678901abcdef23456789' },
-  { id: shortId(), name: 'Weather Data Feed', description: 'Live weather for any city. Pay per API call.', pricePerCall: 0.01, category: 'Data', icon: '🌤', calls: 0, earned: 0, wallet: '0x3456789012abcdef3456789012abcdef34567890' },
-  { id: shortId(), name: 'Agent Compute Unit', description: 'Serverless compute for AI agents. Pay per execution.', pricePerCall: 0.02, category: 'Compute', icon: '⚙️', calls: 0, earned: 0, wallet: '0x4567890123abcdef4567890123abcdef45678901' },
-  { id: shortId(), name: 'USDC Routing Engine', description: 'Optimal payment routing across chains. Pay per route.', pricePerCall: 0.03, category: 'Finance', icon: '🔀', calls: 0, earned: 0, wallet: '0x5678901234abcdef5678901234abcdef56789012' },
+  { id: shortId(), name: 'Arc Price Oracle', description: 'Real-time USDC price feeds. Pay per query.', pricePerCall: 0.01, category: 'Data', icon: '📡', calls: 0, earned: 0, wallet: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' },
+  { id: shortId(), name: 'AI Translation API', description: 'Translate text to any language. Pay per call.', pricePerCall: 0.01, category: 'AI', icon: '🌍', calls: 0, earned: 0, wallet: '0xB8c77482e45F1F44dE1745F52C74426C631bDD52' },
+  { id: shortId(), name: 'KYC Verification', description: 'Instant wallet risk scoring. Pay per check.', pricePerCall: 0.05, category: 'Compliance', icon: '🔒', calls: 0, earned: 0, wallet: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' },
+  { id: shortId(), name: 'Weather Data Feed', description: 'Live weather for any city. Pay per API call.', pricePerCall: 0.01, category: 'Data', icon: '🌤', calls: 0, earned: 0, wallet: '0xdAC17F958D2ee523a2206206994597C13D831ec7' },
+  { id: shortId(), name: 'Agent Compute Unit', description: 'Serverless compute for AI agents. Pay per execution.', pricePerCall: 0.02, category: 'Compute', icon: '⚙️', calls: 0, earned: 0, wallet: '0xE41d2489571d322189246DaFA5ebDe1F4699F498' },
+  { id: shortId(), name: 'USDC Routing Engine', description: 'Optimal payment routing across chains. Pay per route.', pricePerCall: 0.03, category: 'Finance', icon: '🔀', calls: 0, earned: 0, wallet: '0xF629cBd94d3791C9250152BD8dfBDF380E2a3B9c' },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -104,7 +104,6 @@ export default function NanopayPage() {
       callsThisSession: 0, totalSpent: 0, active: true,
     });
 
-    // Fire first call immediately
     try {
       const res = await arcSend(service.wallet, service.pricePerCall.toFixed(6), 'USDC');
       const tx: NanoTransaction = {
@@ -126,7 +125,6 @@ export default function NanopayPage() {
       return;
     }
 
-    // Continue streaming every 10 seconds
     sessionRef.current = setInterval(async () => {
       try {
         const res = await arcSend(service.wallet, service.pricePerCall.toFixed(6), 'USDC');
@@ -171,7 +169,6 @@ export default function NanopayPage() {
 
       <div className="nano-page" style={{ padding: '24px 24px 60px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
 
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · CIRCLE NANOPAYMENTS</div>
@@ -197,7 +194,6 @@ export default function NanopayPage() {
           </div>
         )}
 
-        {/* Stats */}
         <div className="nano-stats">
           {[
             { label: 'TOTAL CALLS', value: String(totalCalls), color: '#00aaff' },
@@ -212,7 +208,6 @@ export default function NanopayPage() {
           ))}
         </div>
 
-        {/* MARKETPLACE */}
         {view === 'marketplace' && (
           <div className="nano-marketplace">
             {services.map(service => (
@@ -248,7 +243,6 @@ export default function NanopayPage() {
           </div>
         )}
 
-        {/* STREAM */}
         {view === 'stream' && (
           <div className="nano-stream-grid">
             <div className="panel" style={{ overflow: 'hidden' }}>
@@ -329,7 +323,6 @@ export default function NanopayPage() {
           </div>
         )}
 
-        {/* HISTORY */}
         {view === 'history' && (
           <div className="panel">
             <div className="panel-header">
