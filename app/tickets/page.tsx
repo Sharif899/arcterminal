@@ -1,9 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
-import QRCode from 'qrcode';
-import { useWallet } from '@/context/WalletContext';
-import WalletConnector from '@/components/WalletConnector';
+import { useState } from 'react';
 import { arcSend } from '@/lib/arc';
+import { useWallet } from '@/context/WalletContext';
 
 interface Event {
   id: string;
@@ -12,13 +10,12 @@ interface Event {
   date: string;
   time: string;
   location: string;
-  category: string;
   price: number;
   totalTickets: number;
-  sold: number;
+  soldTickets: number;
   walletAddress: string;
+  category: string;
   createdAt: string;
-  image: string;
 }
 
 interface Ticket {
@@ -26,193 +23,146 @@ interface Ticket {
   eventId: string;
   eventName: string;
   eventDate: string;
-  eventTime: string;
   eventLocation: string;
-  amount: number;
   buyerAddress: string;
+  buyerName: string;
+  price: number;
   txHash: string;
-  purchasedAt: string;
-  status: 'confirmed';
-  qrData: string;
+  explorerUrl: string;
+  issuedAt: string;
+  tokenId: string;
 }
 
 function shortId() {
   return Math.random().toString(36).substring(2, 10).toUpperCase();
 }
 
-const CATEGORIES = ['Conference', 'Concert', 'Hackathon', 'Workshop', 'Meetup', 'NFT Drop', 'Webinar', 'Sports'];
-const EMOJI_MAP: Record<string, string> = {
-  Conference: '🎤', Concert: '🎵', Hackathon: '💻', Workshop: '🛠',
-  Meetup: '🤝', 'NFT Drop': '🎨', Webinar: '📡', Sports: '🏆',
+const CATEGORIES = ['Conference', 'Concert', 'Workshop', 'Meetup', 'Sports', 'Festival', 'Webinar'];
+const CATEGORY_EMOJI: Record<string, string> = {
+  Conference: '🎤', Concert: '🎵', Workshop: '🛠', Meetup: '🤝',
+  Sports: '⚽', Festival: '🎉', Webinar: '💻',
 };
 
 const DEMO_EVENTS: Event[] = [
   {
-    id: shortId(), name: 'Arc Developer Summit 2025', description: 'The biggest Web3 developer conference on Arc Network. Talks, workshops, and networking.',
-    date: '2025-09-15', time: '09:00', location: 'Lagos, Nigeria', category: 'Conference',
-    price: 49, totalTickets: 500, sold: 187,
+    id: shortId(), name: 'Arc Developer Summit 2025',
+    description: 'Annual gathering of Arc builders — talks, workshops, and networking with the core team.',
+    date: '2025-08-15', time: '09:00', location: 'Lagos, Nigeria',
+    price: 25, totalTickets: 500, soldTickets: 312,
     walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
-    createdAt: new Date().toLocaleDateString(), image: '🎤',
+    category: 'Conference', createdAt: new Date().toLocaleDateString(),
   },
   {
-    id: shortId(), name: 'USDC Hackathon — Build on Arc', description: '48-hour hackathon. $50,000 USDC prize pool. Build the future of DeFi on Arc.',
-    date: '2025-08-02', time: '08:00', location: 'Nairobi, Kenya', category: 'Hackathon',
-    price: 0, totalTickets: 200, sold: 143,
+    id: shortId(), name: 'Web3 Africa Meetup',
+    description: 'Community meetup for Web3 builders across Africa.',
+    date: '2025-07-20', time: '18:00', location: 'Accra, Ghana',
+    price: 5, totalTickets: 200, soldTickets: 87,
     walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
-    createdAt: new Date().toLocaleDateString(), image: '💻',
-  },
-  {
-    id: shortId(), name: 'DeFi & Stablecoins Meetup', description: 'Monthly community meetup for DeFi builders, investors, and enthusiasts.',
-    date: '2025-07-20', time: '18:00', location: 'Accra, Ghana', category: 'Meetup',
-    price: 5, totalTickets: 100, sold: 61,
-    walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
-    createdAt: new Date().toLocaleDateString(), image: '🤝',
+    category: 'Meetup', createdAt: new Date().toLocaleDateString(),
   },
 ];
 
-export default function TicketsPage() {
-  const { address } = useWallet();
+function QRCode({ data, size = 120 }: { data: string; size?: number }) {
+  const cells = 10;
+  const cellSize = size / cells;
+  const hash = data.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const grid = Array.from({ length: cells }, (_, r) =>
+    Array.from({ length: cells }, (_, c) => {
+      if (r === 0 || r === cells - 1 || c === 0 || c === cells - 1) return 1;
+      if (r <= 2 && c <= 2) return 1;
+      if (r <= 2 && c >= cells - 3) return 1;
+      if (r >= cells - 3 && c <= 2) return 1;
+      return (hash * (r + 1) * (c + 1) + r * c) % 3 === 0 ? 1 : 0;
+    })
+  );
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: 'block' }}>
+      {grid.map((row, r) =>
+        row.map((cell, c) =>
+          cell ? <rect key={`${r}-${c}`} x={c * cellSize} y={r * cellSize} width={cellSize} height={cellSize} fill="#00ff88" /> : null
+        )
+      )}
+    </svg>
+  );
+}
 
-  const [view, setView] = useState<'events' | 'mytickets' | 'manage'>('events');
+export default function TicketsPage() {
+  const { address, connect } = useWallet();
+  const [view, setView] = useState<'events' | 'manage' | 'mytickets'>('events');
   const [events, setEvents] = useState<Event[]>(DEMO_EVENTS);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [buying, setBuying] = useState<string | null>(null);
   const [checkoutEvent, setCheckoutEvent] = useState<Event | null>(null);
-  const [txResult, setTxResult] = useState<{ hash: string; event: string; ticketId: string } | null>(null);
+  const [buyerName, setBuyerName] = useState('');
+  const [buying, setBuying] = useState<string | null>(null);
+  const [newTicket, setNewTicket] = useState<Ticket | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [filterCategory, setFilterCategory] = useState('ALL');
-  const [addError, setAddError] = useState('');
-  const [buyError, setBuyError] = useState('');
+  const [payError, setPayError] = useState('');
   const [newEvent, setNewEvent] = useState({
     name: '', description: '', date: '', time: '', location: '',
-    category: 'Conference', price: '', totalTickets: '', walletAddress: '',
+    price: '', totalTickets: '', walletAddress: '', category: 'Conference',
   });
-
-  async function generateQR(data: string): Promise<string> {
-    try {
-      return await QRCode.toDataURL(data, {
-        width: 200, margin: 2,
-        color: { dark: '#00ff88', light: '#040608' },
-      });
-    } catch { return ''; }
-  }
-
-  useEffect(() => {
-    if (selectedTicket) {
-      generateQR(selectedTicket.qrData).then(setQrDataUrl);
-    }
-  }, [selectedTicket]);
+  const [addError, setAddError] = useState('');
 
   function addEvent() {
     setAddError('');
     if (!newEvent.name) return setAddError('Event name required');
     if (!newEvent.date) return setAddError('Event date required');
-    if (!newEvent.location) return setAddError('Location required');
-    if (!newEvent.totalTickets || parseInt(newEvent.totalTickets) <= 0) return setAddError('Valid ticket count required');
-    if (parseFloat(newEvent.price || '0') < 0) return setAddError('Price cannot be negative');
+    if (!newEvent.price || parseFloat(newEvent.price) < 0) return setAddError('Valid price required');
     if (!newEvent.walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(newEvent.walletAddress)) return setAddError('Valid wallet address required');
     const event: Event = {
       id: shortId(), name: newEvent.name, description: newEvent.description,
-      date: newEvent.date, time: newEvent.time || '00:00', location: newEvent.location,
-      category: newEvent.category, price: parseFloat(newEvent.price || '0'),
-      totalTickets: parseInt(newEvent.totalTickets), sold: 0,
-      walletAddress: newEvent.walletAddress, createdAt: new Date().toLocaleDateString(),
-      image: EMOJI_MAP[newEvent.category] || '🎤',
+      date: newEvent.date, time: newEvent.time, location: newEvent.location,
+      price: parseFloat(newEvent.price), totalTickets: parseInt(newEvent.totalTickets) || 100,
+      soldTickets: 0, walletAddress: newEvent.walletAddress,
+      category: newEvent.category, createdAt: new Date().toLocaleDateString(),
     };
     setEvents(prev => [event, ...prev]);
-    setNewEvent({ name: '', description: '', date: '', time: '', location: '', category: 'Conference', price: '', totalTickets: '', walletAddress: '' });
+    setNewEvent({ name: '', description: '', date: '', time: '', location: '', price: '', totalTickets: '', walletAddress: '', category: 'Conference' });
     setShowAddForm(false);
   }
 
-  function removeEvent(id: string) {
-    setEvents(prev => prev.filter(e => e.id !== id));
-  }
-
   async function handleBuy(event: Event) {
-    if (!address) return;
+    if (!address) { await connect(); return; }
+    if (!buyerName.trim()) return;
     setBuying(event.id);
-    setBuyError('');
+    setPayError('');
     try {
-      let txHash = '';
-      if (event.price > 0) {
-        const res = await arcSend(event.walletAddress, event.price.toString(), 'USDC');
-        txHash = res.txHash;
-      } else {
-        txHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-      }
-      const ticketId = shortId();
-      const qrData = JSON.stringify({ ticketId, event: event.name, buyer: address, tx: txHash, date: event.date });
-      setEvents(prev => prev.map(e => e.id === event.id ? { ...e, sold: e.sold + 1 } : e));
-      setTickets(prev => [{
-        id: ticketId, eventId: event.id, eventName: event.name,
-        eventDate: event.date, eventTime: event.time, eventLocation: event.location,
-        amount: event.price, buyerAddress: address, txHash,
-        purchasedAt: new Date().toLocaleString(), status: 'confirmed', qrData,
-      }, ...prev]);
-      setTxResult({ hash: txHash, event: event.name, ticketId });
+      const res = await arcSend(event.walletAddress, event.price.toFixed(2), 'USDC');
+      const tokenId = shortId();
+      const ticket: Ticket = {
+        id: shortId(), eventId: event.id, eventName: event.name,
+        eventDate: event.date, eventLocation: event.location,
+        buyerAddress: address, buyerName,
+        price: event.price, txHash: res.txHash, explorerUrl: res.explorerUrl,
+        issuedAt: new Date().toLocaleString(), tokenId,
+      };
+      setEvents(prev => prev.map(e => e.id === event.id ? { ...e, soldTickets: e.soldTickets + 1 } : e));
+      setTickets(prev => [ticket, ...prev]);
+      setNewTicket(ticket);
       setCheckoutEvent(null);
-    } catch (e: unknown) {
-      setBuyError(e instanceof Error ? e.message : 'Payment failed');
-    } finally {
-      setBuying(null);
+      setBuyerName('');
+    } catch (e: any) {
+      setPayError(e?.message || 'Payment failed');
     }
-  }
-
-  const filteredEvents = filterCategory === 'ALL' ? events : events.filter(e => e.category === filterCategory);
-  const allCategories = ['ALL', ...Array.from(new Set(events.map(e => e.category)))];
-
-  function formatDate(d: string) {
-    if (!d) return '—';
-    return new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-  }
-
-  const totalRevenue = tickets.reduce((s, t) => s + t.amount, 0);
-  const availableEvents = events.filter(e => e.sold < e.totalTickets).length;
-
-  if (!address) {
-    return (
-      <div style={{ minHeight: 'calc(100vh - 84px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <div className="panel" style={{ maxWidth: 420, width: '100%', padding: '48px 36px', textAlign: 'center' }}>
-          <div style={{ fontSize: 48, marginBottom: 20 }}>🎟</div>
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 10 }}>ARC TERMINAL · TICKETS</div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e8f0e8', marginBottom: 12, letterSpacing: '-0.02em' }}>Wallet Required</h2>
-          <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)', lineHeight: 1.7, marginBottom: 32 }}>
-            Connect your wallet to browse events, buy tickets, and manage your own events.
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <WalletConnector />
-          </div>
-        </div>
-      </div>
-    );
+    setBuying(null);
   }
 
   return (
     <>
       <style>{`
-        .events-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
-        .event-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; overflow: hidden; transition: all 0.2s; cursor: pointer; }
-        .event-card:hover { border-color: rgba(0,255,136,0.2); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
-        .tickets-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-        .ticket-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; overflow: hidden; cursor: pointer; transition: all 0.2s; }
-        .ticket-card:hover { border-color: rgba(0,255,136,0.2); transform: translateY(-2px); }
-        .ticket-stub { border-top: 1px dashed rgba(255,255,255,0.1); margin: 0 16px; }
-        .events-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
-        .progress-bar-bg { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; margin-top: 8px; }
-        .progress-bar-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #00ff88, #00aaff); transition: width 0.5s ease; }
-        .filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
-        .filter-tab { padding: 5px 12px; border-radius: 4px; font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; border: 1px solid rgba(255,255,255,0.07); background: rgba(255,255,255,0.03); color: rgba(232,240,232,0.4); transition: all 0.15s; }
-        .filter-tab:hover { color: rgba(232,240,232,0.7); border-color: rgba(255,255,255,0.12); }
-        .filter-tab.active { background: rgba(0,255,136,0.1); color: #00ff88; border-color: rgba(0,255,136,0.25); }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .modal { background: #080c10; border: 1px solid rgba(0,255,136,0.2); border-radius: 12px; padding: 28px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
-        .qr-modal { max-width: 360px; text-align: center; }
-        .sold-out-overlay { position: absolute; inset: 0; background: rgba(4,6,8,0.7); display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; color: #ff3355; letter-spacing: 0.1em; }
-        @media (max-width: 1024px) { .events-layout { grid-template-columns: 1fr; } }
-        @media (max-width: 768px) { .events-grid { grid-template-columns: repeat(2, 1fr); } .tickets-grid { grid-template-columns: 1fr; } }
-        @media (max-width: 480px) { .events-grid { grid-template-columns: 1fr; } .tickets-page { padding: 16px 16px 60px !important; } .stats-row { grid-template-columns: repeat(2, 1fr) !important; } .form-row-2 { grid-template-columns: 1fr !important; } }
+        .events-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+        .ticket-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+        .ticket-card { background: linear-gradient(135deg, rgba(0,255,136,0.06) 0%, rgba(0,170,255,0.04) 100%); border: 1px solid rgba(0,255,136,0.2); border-radius: 12px; overflow: hidden; position: relative; }
+        .ticket-card::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; border-radius: 50%; background: #040608; border: 1px solid rgba(0,255,136,0.2); margin-left: -8px; }
+        .ticket-card::after { content: ''; position: absolute; right: 0; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; border-radius: 50%; background: #040608; border: 1px solid rgba(0,255,136,0.2); margin-right: -8px; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .modal { background: #080c10; border: 1px solid rgba(0,255,136,0.2); border-radius: 12px; padding: 28px; width: 100%; max-width: 460px; animation: fadeUp 0.2s ease; max-height: 90vh; overflow-y: auto; }
+        .ticket-modal { background: #080c10; border: 1px solid rgba(0,255,136,0.3); border-radius: 16px; width: 100%; max-width: 380px; animation: fadeUp 0.2s ease; overflow: hidden; }
+        .progress-bar { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+        @media (max-width: 768px) { .events-grid { grid-template-columns: 1fr; } .ticket-stats { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 480px) { .tickets-page { padding: 16px 16px 60px !important; } }
       `}</style>
 
       <div className="tickets-page" style={{ padding: '24px 24px 60px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
@@ -221,28 +171,26 @@ export default function TicketsPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · TICKETS</div>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>Tickets</h1>
-            <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)' }}>Create events, sell tickets, collect USDC payments on Arc</p>
-            <div style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)' }}>
-              <span className="live-dot" style={{ width: 5, height: 5 }} />
-              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00ff88' }}>{address.slice(0, 6)}…{address.slice(-4)}</span>
-            </div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>Event Tickets</h1>
+            <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)' }}>Create events, sell tickets, verify via QR — powered by Arc + USDC</p>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {!address
+              ? <button onClick={connect} className="btn btn-green" style={{ fontSize: 11 }}>🦊 CONNECT WALLET</button>
+              : <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00ff88', padding: '6px 12px', borderRadius: 6, background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.2)' }}>{address.slice(0, 6)}…{address.slice(-4)}</div>
+            }
             <button onClick={() => setView('events')} className={view === 'events' ? 'btn btn-green' : 'btn btn-ghost'} style={{ fontSize: 11 }}>🎟 EVENTS</button>
-            <button onClick={() => setView('mytickets')} className={view === 'mytickets' ? 'btn btn-green' : 'btn btn-ghost'} style={{ fontSize: 11 }}>
-              🎫 MY TICKETS {tickets.length > 0 && <span style={{ background: 'rgba(0,255,136,0.2)', borderRadius: 4, padding: '1px 6px', fontSize: 10 }}>{tickets.length}</span>}
-            </button>
+            <button onClick={() => setView('mytickets')} className={view === 'mytickets' ? 'btn btn-green' : 'btn btn-ghost'} style={{ fontSize: 11 }}>👤 MY TICKETS {tickets.length > 0 && `(${tickets.length})`}</button>
             <button onClick={() => setView('manage')} className={view === 'manage' ? 'btn btn-green' : 'btn btn-ghost'} style={{ fontSize: 11 }}>⚙ MANAGE</button>
           </div>
         </div>
 
         {/* Stats */}
-        <div className="stats-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+        <div className="ticket-stats">
           {[
-            { label: 'TOTAL EVENTS', value: events.length, color: '#00aaff' },
-            { label: 'AVAILABLE', value: availableEvents, color: '#00ff88' },
-            { label: 'REVENUE (USDC)', value: `$${totalRevenue.toLocaleString()}`, color: '#00ff88' },
+            { label: 'EVENTS', value: events.length, color: '#00aaff' },
+            { label: 'TICKETS SOLD', value: events.reduce((s, e) => s + e.soldTickets, 0), color: '#00ff88' },
+            { label: 'REVENUE (USDC)', value: `$${tickets.reduce((s, t) => s + t.price, 0).toLocaleString()}`, color: '#00ff88' },
             { label: 'MY TICKETS', value: tickets.length, color: '#ffaa00' },
           ].map(s => (
             <div key={s.label} className="panel" style={{ padding: 16 }}>
@@ -252,151 +200,103 @@ export default function TicketsPage() {
           ))}
         </div>
 
-        {/* Success banner */}
-        {txResult && (
+        {/* New ticket banner */}
+        {newTicket && (
           <div style={{ background: 'rgba(0,255,136,0.08)', border: '1px solid rgba(0,255,136,0.25)', borderRadius: 8, padding: '14px 20px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
             <div>
-              <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: '#00ff88', marginBottom: 4 }}>✓ Ticket confirmed — {txResult.event}</div>
-              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.4)' }}>Ticket ID: {txResult.ticketId} · {txResult.hash.slice(0, 20)}...</div>
+              <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: '#00ff88', marginBottom: 4 }}>✓ Ticket #{newTicket.tokenId} minted — {newTicket.eventName}</div>
+              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.4)' }}>{newTicket.txHash.slice(0, 24)}...</div>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={() => { setView('mytickets'); setTxResult(null); }} className="btn btn-green" style={{ fontSize: 11 }}>VIEW TICKET 🎫</button>
-              <a href={`https://testnet.arcscan.app/tx/${txResult.hash}`} target="_blank" rel="noopener noreferrer" className="btn btn-blue" style={{ fontSize: 11 }}>ARCSCAN ↗</a>
-              <button onClick={() => setTxResult(null)} className="btn btn-ghost" style={{ fontSize: 11 }}>DISMISS</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => { setSelectedTicket(newTicket); setNewTicket(null); }} className="btn btn-green" style={{ fontSize: 11 }}>VIEW TICKET</button>
+              <a href={newTicket.explorerUrl} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ fontSize: 11 }}>ARCSCAN ↗</a>
+              <button onClick={() => setNewTicket(null)} className="btn btn-ghost" style={{ fontSize: 11 }}>✕</button>
             </div>
           </div>
         )}
 
-        {/* EVENTS VIEW */}
+        {/* EVENTS */}
         {view === 'events' && (
-          <div className="events-layout">
-            <div>
-              <div className="filter-tabs">
-                {allCategories.map(cat => (
-                  <button key={cat} className={`filter-tab ${filterCategory === cat ? 'active' : ''}`} onClick={() => setFilterCategory(cat)}>
-                    {cat !== 'ALL' && EMOJI_MAP[cat] ? `${EMOJI_MAP[cat]} ` : ''}{cat}
-                  </button>
-                ))}
-              </div>
-              {filteredEvents.length === 0 ? (
-                <div style={{ padding: '48px 24px', textAlign: 'center', fontFamily: 'Space Mono, monospace', fontSize: 12, color: 'rgba(232,240,232,0.25)' }}>No events in this category</div>
-              ) : (
-                <div className="events-grid">
-                  {filteredEvents.map(event => {
-                    const soldOut = event.sold >= event.totalTickets;
-                    const pct = Math.round((event.sold / event.totalTickets) * 100);
-                    return (
-                      <div key={event.id} className="event-card" style={{ position: 'relative' }} onClick={() => !soldOut && setCheckoutEvent(event)}>
-                        {soldOut && <div className="sold-out-overlay">SOLD OUT</div>}
-                        <div style={{ padding: '28px 20px 20px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <div style={{ fontSize: 44, marginBottom: 10 }}>{event.image}</div>
-                          <span className="badge badge-blue" style={{ fontSize: 9 }}>{event.category}</span>
-                        </div>
-                        <div style={{ padding: '16px 18px 20px' }}>
-                          <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: '#e8f0e8', marginBottom: 8, lineHeight: 1.4 }}>{event.name}</div>
-                          <div style={{ fontSize: 12, color: 'rgba(232,240,232,0.4)', lineHeight: 1.5, marginBottom: 14 }}>{event.description}</div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 14 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 11 }}>📅</span>
-                              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.5)' }}>{formatDate(event.date)} · {event.time}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 11 }}>📍</span>
-                              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.5)' }}>{event.location}</span>
-                            </div>
-                          </div>
-                          <div style={{ marginBottom: 14 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.1em' }}>CAPACITY</span>
-                              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: pct > 80 ? '#ffaa00' : 'rgba(232,240,232,0.3)' }}>{event.sold}/{event.totalTickets} · {pct}%</span>
-                            </div>
-                            <div className="progress-bar-bg">
-                              <div className="progress-bar-fill" style={{ width: `${pct}%`, background: pct > 80 ? 'linear-gradient(90deg, #ffaa00, #ff3355)' : undefined }} />
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                            <span style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 18, color: '#00ff88' }}>{event.price === 0 ? 'FREE' : `$${event.price} USDC`}</span>
-                            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{event.totalTickets - event.sold} left</span>
-                          </div>
-                          <button disabled={soldOut} className={soldOut ? 'btn btn-ghost' : 'btn btn-green'} style={{ width: '100%', fontSize: 12 }}
-                            onClick={e => { e.stopPropagation(); if (!soldOut) { setCheckoutEvent(event); setBuyError(''); } }}>
-                            {soldOut ? 'SOLD OUT' : event.price === 0 ? 'REGISTER FREE' : 'BUY TICKET'}
-                          </button>
-                        </div>
+          <div className="events-grid">
+            {events.map(event => {
+              const soldPct = Math.round((event.soldTickets / event.totalTickets) * 100);
+              const isSoldOut = event.soldTickets >= event.totalTickets;
+              return (
+                <div key={event.id} className="panel" style={{ overflow: 'hidden' }}>
+                  <div style={{ padding: '20px 20px 0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 24 }}>{CATEGORY_EMOJI[event.category] || '🎟'}</span>
+                        <span className="badge badge-blue" style={{ fontSize: 9 }}>{event.category}</span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Recent tickets sidebar */}
-            <div className="panel">
-              <div className="panel-header">
-                <div className="panel-title">RECENT SALES</div>
-                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{tickets.length}</span>
-              </div>
-              {tickets.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.25)' }}>No ticket sales yet</div>
-              ) : tickets.map(ticket => (
-                <div key={ticket.id} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onClick={() => setSelectedTicket(ticket)}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: '#e8f0e8' }}>{ticket.eventName.length > 18 ? ticket.eventName.slice(0, 18) + '…' : ticket.eventName}</span>
-                    <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#00ff88', fontWeight: 700 }}>{ticket.amount === 0 ? 'FREE' : `$${ticket.amount}`}</span>
+                      <span style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 18, color: '#00ff88' }}>
+                        {event.price === 0 ? 'FREE' : `$${event.price} USDC`}
+                      </span>
+                    </div>
+                    <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 15, color: '#e8f0e8', marginBottom: 6 }}>{event.name}</div>
+                    <div style={{ fontSize: 12, color: 'rgba(232,240,232,0.4)', lineHeight: 1.5, marginBottom: 14 }}>{event.description}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+                      {[
+                        { icon: '📅', value: new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
+                        { icon: '🕐', value: event.time },
+                        { icon: '📍', value: event.location },
+                        { icon: '🎟', value: `${event.soldTickets}/${event.totalTickets} sold` },
+                      ].map(item => (
+                        <div key={item.icon} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(232,240,232,0.5)' }}>
+                          <span>{item.icon}</span><span>{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>
+                        <span>AVAILABILITY</span><span>{soldPct}% SOLD</span>
+                      </div>
+                      <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${soldPct}%`, background: soldPct > 80 ? '#ff3355' : soldPct > 50 ? '#ffaa00' : '#00ff88' }} />
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 3 }}>#{ticket.id} · {ticket.purchasedAt.slice(0, 10)}</div>
-                  <a href={`https://testnet.arcscan.app/tx/${ticket.txHash}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                    style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', textDecoration: 'none' }}>
-                    {ticket.txHash.slice(0, 14)}... ↗
-                  </a>
+                  <div style={{ padding: '0 20px 20px' }}>
+                    <button onClick={() => { setCheckoutEvent(event); setPayError(''); }} disabled={isSoldOut} className={isSoldOut ? 'btn btn-ghost' : 'btn btn-green'} style={{ width: '100%', fontSize: 12 }}>
+                      {isSoldOut ? 'SOLD OUT' : `GET TICKET · $${event.price} USDC`}
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
 
-        {/* MY TICKETS VIEW */}
+        {/* MY TICKETS */}
         {view === 'mytickets' && (
           <div>
             {tickets.length === 0 ? (
-              <div style={{ padding: '64px 24px', textAlign: 'center' }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>🎫</div>
-                <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 13, color: 'rgba(232,240,232,0.35)', marginBottom: 20 }}>No tickets yet. Buy your first ticket above.</div>
+              <div className="panel" style={{ padding: 48, textAlign: 'center' }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🎟</div>
+                <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 13, color: 'rgba(232,240,232,0.3)', marginBottom: 8 }}>No tickets yet</div>
                 <button onClick={() => setView('events')} className="btn btn-green" style={{ fontSize: 12 }}>BROWSE EVENTS</button>
               </div>
             ) : (
-              <div className="tickets-grid">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
                 {tickets.map(ticket => (
-                  <div key={ticket.id} className="ticket-card" onClick={() => setSelectedTicket(ticket)}>
-                    <div style={{ padding: '16px 18px 12px', background: 'rgba(0,255,136,0.04)', borderBottom: '1px solid rgba(0,255,136,0.08)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <span className="badge badge-green" style={{ fontSize: 9 }}>✓ CONFIRMED</span>
-                        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>#{ticket.id}</span>
+                  <div key={ticket.id} className="ticket-card" style={{ cursor: 'pointer' }} onClick={() => setSelectedTicket(ticket)}>
+                    <div style={{ padding: '20px 28px', borderBottom: '1px dashed rgba(0,255,136,0.15)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <span className="badge badge-green" style={{ fontSize: 9 }}>NFT TICKET</span>
+                        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>#{ticket.tokenId}</span>
                       </div>
-                      <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 14, color: '#e8f0e8', lineHeight: 1.3 }}>{ticket.eventName}</div>
+                      <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 15, color: '#e8f0e8', marginBottom: 4 }}>{ticket.eventName}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(232,240,232,0.4)' }}>{new Date(ticket.eventDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                      <div style={{ fontSize: 12, color: 'rgba(232,240,232,0.4)' }}>📍 {ticket.eventLocation}</div>
                     </div>
-                    <div style={{ padding: '14px 18px' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-                        {[
-                          { label: 'DATE', value: formatDate(ticket.eventDate) },
-                          { label: 'TIME', value: ticket.eventTime },
-                          { label: 'LOCATION', value: ticket.eventLocation },
-                          { label: 'PAID', value: ticket.amount === 0 ? 'FREE' : `$${ticket.amount} USDC` },
-                        ].map(row => (
-                          <div key={row.label}>
-                            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.1em', marginBottom: 3 }}>{row.label}</div>
-                            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: row.label === 'PAID' ? '#00ff88' : '#e8f0e8', fontWeight: row.label === 'PAID' ? 700 : 400 }}>{row.value}</div>
-                          </div>
-                        ))}
+                    <div style={{ padding: '16px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 2 }}>HOLDER</div>
+                        <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: '#e8f0e8' }}>{ticket.buyerName}</div>
                       </div>
-                      <div className="ticket-stub" style={{ padding: '10px 0 0' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <a href={`https://testnet.arcscan.app/tx/${ticket.txHash}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
-                            style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', textDecoration: 'none' }}>
-                            {ticket.txHash.slice(0, 16)}... ↗
-                          </a>
-                          <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>TAP FOR QR 📲</span>
-                        </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 2 }}>PAID</div>
+                        <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 14, fontWeight: 700, color: '#00ff88' }}>${ticket.price} USDC</div>
                       </div>
                     </div>
                   </div>
@@ -406,7 +306,7 @@ export default function TicketsPage() {
           </div>
         )}
 
-        {/* MANAGE VIEW */}
+        {/* MANAGE */}
         {view === 'manage' && (
           <div className="panel">
             <div className="panel-header">
@@ -417,130 +317,127 @@ export default function TicketsPage() {
             </div>
             {showAddForm && (
               <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,255,136,0.02)' }}>
-                <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div><label className="label">EVENT NAME</label><input className="input" placeholder="My Awesome Event" value={newEvent.name} onChange={e => setNewEvent(p => ({ ...p, name: e.target.value }))} /></div>
-                  <div><label className="label">CATEGORY</label>
-                    <select className="select" value={newEvent.category} onChange={e => setNewEvent(p => ({ ...p, category: e.target.value }))}>
-                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <div><label className="label">EVENT NAME</label><input className="input" placeholder="Arc Summit 2025" value={newEvent.name} onChange={e => setNewEvent(p => ({ ...p, name: e.target.value }))} /></div>
+                  <div><label className="label">CATEGORY</label><select className="select" value={newEvent.category} onChange={e => setNewEvent(p => ({ ...p, category: e.target.value }))}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                 </div>
-                <div style={{ marginBottom: 12 }}><label className="label">DESCRIPTION</label><input className="input" placeholder="Tell people about your event..." value={newEvent.description} onChange={e => setNewEvent(p => ({ ...p, description: e.target.value }))} /></div>
-                <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div style={{ marginBottom: 12 }}><label className="label">DESCRIPTION</label><input className="input" placeholder="What's this event about?" value={newEvent.description} onChange={e => setNewEvent(p => ({ ...p, description: e.target.value }))} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
                   <div><label className="label">DATE</label><input className="input" type="date" value={newEvent.date} onChange={e => setNewEvent(p => ({ ...p, date: e.target.value }))} /></div>
                   <div><label className="label">TIME</label><input className="input" type="time" value={newEvent.time} onChange={e => setNewEvent(p => ({ ...p, time: e.target.value }))} /></div>
+                  <div><label className="label">LOCATION</label><input className="input" placeholder="Lagos, Nigeria" value={newEvent.location} onChange={e => setNewEvent(p => ({ ...p, location: e.target.value }))} /></div>
                 </div>
-                <div style={{ marginBottom: 12 }}><label className="label">LOCATION</label><input className="input" placeholder="Lagos, Nigeria" value={newEvent.location} onChange={e => setNewEvent(p => ({ ...p, location: e.target.value }))} /></div>
-                <div className="form-row-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div><label className="label">TICKET PRICE (USDC · 0 = FREE)</label><input className="input" type="number" placeholder="0" value={newEvent.price} onChange={e => setNewEvent(p => ({ ...p, price: e.target.value }))} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <div><label className="label">TICKET PRICE (USDC)</label><input className="input" type="number" placeholder="25" value={newEvent.price} onChange={e => setNewEvent(p => ({ ...p, price: e.target.value }))} /></div>
                   <div><label className="label">TOTAL TICKETS</label><input className="input" type="number" placeholder="100" value={newEvent.totalTickets} onChange={e => setNewEvent(p => ({ ...p, totalTickets: e.target.value }))} /></div>
                 </div>
-                <div style={{ marginBottom: 12 }}><label className="label">YOUR WALLET ADDRESS (receives USDC)</label><input className="input" placeholder="0x..." value={newEvent.walletAddress} onChange={e => setNewEvent(p => ({ ...p, walletAddress: e.target.value }))} /></div>
+                <div style={{ marginBottom: 12 }}><label className="label">YOUR WALLET (receives USDC)</label><input className="input" placeholder="0x..." value={newEvent.walletAddress} onChange={e => setNewEvent(p => ({ ...p, walletAddress: e.target.value }))} /></div>
                 {addError && <div style={{ color: '#ff3355', fontFamily: 'Space Mono, monospace', fontSize: 11, marginBottom: 10 }}>⚠ {addError}</div>}
                 <button onClick={addEvent} className="btn btn-green" style={{ fontSize: 12 }}>CREATE EVENT</button>
               </div>
             )}
             <div>
-              {events.length === 0 && <div style={{ padding: 32, textAlign: 'center', fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.25)' }}>No events yet.</div>}
-              {events.map(event => {
-                const pct = Math.round((event.sold / event.totalTickets) * 100);
-                return (
-                  <div key={event.id} style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: 28 }}>{event.image}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: '#e8f0e8', marginBottom: 2 }}>{event.name}</div>
-                        <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 6 }}>{event.category} · {formatDate(event.date)} · {event.location}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ flex: 1, maxWidth: 120 }}><div className="progress-bar-bg" style={{ marginTop: 0 }}><div className="progress-bar-fill" style={{ width: `${pct}%` }} /></div></div>
-                          <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,240,232,0.3)' }}>{event.sold}/{event.totalTickets} sold</span>
-                        </div>
+              {events.map(event => (
+                <div key={event.id} style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+                    <span style={{ fontSize: 28 }}>{CATEGORY_EMOJI[event.category]}</span>
+                    <div>
+                      <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: '#e8f0e8', marginBottom: 2 }}>{event.name}</div>
+                      <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>
+                        {new Date(event.date).toLocaleDateString()} · {event.location} · {event.soldTickets}/{event.totalTickets} sold
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 14, color: '#00ff88' }}>{event.price === 0 ? 'FREE' : `$${event.price} USDC`}</span>
-                      <button onClick={() => removeEvent(event.id)} className="btn btn-ghost" style={{ fontSize: 10, padding: '5px 10px', color: '#ff3355' }}>DELETE</button>
-                    </div>
                   </div>
-                );
-              })}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 14, color: '#00ff88' }}>${event.price} USDC</span>
+                    <button onClick={() => setEvents(prev => prev.filter(e => e.id !== event.id))} className="btn btn-ghost" style={{ fontSize: 10, padding: '5px 10px', color: '#ff3355' }}>DELETE</button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* CHECKOUT MODAL */}
+        {/* Checkout Modal */}
         {checkoutEvent && (
           <div className="modal-overlay" onClick={() => setCheckoutEvent(null)}>
             <div className="modal" onClick={e => e.stopPropagation()}>
               <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                <div style={{ fontSize: 44, marginBottom: 8 }}>{checkoutEvent.image}</div>
-                <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 15, color: '#e8f0e8', marginBottom: 6, lineHeight: 1.3 }}>{checkoutEvent.name}</div>
-                <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 26, color: '#00ff88' }}>{checkoutEvent.price === 0 ? 'FREE' : `$${checkoutEvent.price} USDC`}</div>
+                <div style={{ fontSize: 40, marginBottom: 8 }}>{CATEGORY_EMOJI[checkoutEvent.category]}</div>
+                <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 16, color: '#e8f0e8', marginBottom: 4 }}>{checkoutEvent.name}</div>
+                <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 22, color: '#00ff88', marginBottom: 4 }}>
+                  {checkoutEvent.price === 0 ? 'FREE' : `$${checkoutEvent.price} USDC`}
+                </div>
+                <div style={{ fontSize: 12, color: 'rgba(232,240,232,0.4)' }}>📅 {new Date(checkoutEvent.date).toLocaleDateString()} · 📍 {checkoutEvent.location}</div>
               </div>
               {[
-                { label: 'DATE', value: `${formatDate(checkoutEvent.date)} · ${checkoutEvent.time}` },
-                { label: 'LOCATION', value: checkoutEvent.location },
-                { label: 'ORGANIZER', value: `${checkoutEvent.walletAddress.slice(0, 10)}...${checkoutEvent.walletAddress.slice(-8)}` },
-                { label: 'BUYER', value: `${address.slice(0, 10)}...${address.slice(-8)}` },
+                { label: 'ORGANIZER WALLET', value: `${checkoutEvent.walletAddress.slice(0, 10)}...${checkoutEvent.walletAddress.slice(-8)}` },
                 { label: 'NETWORK', value: 'Arc Testnet' },
                 { label: 'GAS FEE', value: '~$0.01 USDC' },
-                { label: 'FINALITY', value: '< 1 second' },
-                { label: 'AVAILABILITY', value: `${checkoutEvent.totalTickets - checkoutEvent.sold} tickets left` },
+                { label: 'TICKET TYPE', value: 'NFT on Arc' },
               ].map(row => (
                 <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.35)' }}>{row.label}</span>
-                  <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: '#e8f0e8', textAlign: 'right', maxWidth: 220, wordBreak: 'break-all' }}>{row.value}</span>
+                  <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: '#e8f0e8' }}>{row.value}</span>
                 </div>
               ))}
-              {buyError && (
-                <div style={{ marginTop: 12, padding: '10px 14px', borderRadius: 6, background: 'rgba(255,51,85,0.08)', border: '1px solid rgba(255,51,85,0.2)', fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#ff3355' }}>
-                  ✗ {buyError}
+              <div style={{ marginTop: 20, marginBottom: 16 }}>
+                <label className="label">YOUR NAME</label>
+                <input className="input" placeholder="John Doe" value={buyerName} onChange={e => setBuyerName(e.target.value)} />
+              </div>
+              {payError && (
+                <div style={{ marginBottom: 14, padding: '10px 14px', background: 'rgba(255,51,85,0.08)', border: '1px solid rgba(255,51,85,0.2)', borderRadius: 6, fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#ff3355' }}>⚠ {payError}</div>
+              )}
+              {!address && (
+                <div style={{ marginBottom: 14, padding: '10px 14px', background: 'rgba(255,170,0,0.08)', border: '1px solid rgba(255,170,0,0.2)', borderRadius: 6, fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#ffaa00' }}>
+                  Connect your wallet to buy ticket
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => setCheckoutEvent(null)} className="btn btn-ghost" style={{ flex: 1 }}>CANCEL</button>
-                <button onClick={() => handleBuy(checkoutEvent)} disabled={buying === checkoutEvent.id} className="btn btn-green" style={{ flex: 1 }}>
-                  {buying === checkoutEvent.id ? <><span className="spinner" /> PROCESSING...</> : checkoutEvent.price === 0 ? 'REGISTER NOW' : 'PAY & GET TICKET'}
+                <button onClick={() => handleBuy(checkoutEvent)} disabled={buying === checkoutEvent.id || !buyerName} className="btn btn-green" style={{ flex: 1 }}>
+                  {buying === checkoutEvent.id ? <><span className="spinner" /> MINTING...</> : address ? 'BUY TICKET' : '🦊 CONNECT & PAY'}
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* QR TICKET MODAL */}
+        {/* Ticket viewer */}
         {selectedTicket && (
-          <div className="modal-overlay" onClick={() => { setSelectedTicket(null); setQrDataUrl(''); }}>
-            <div className="modal qr-modal" onClick={e => e.stopPropagation()}>
-              <div style={{ marginBottom: 16 }}><span className="badge badge-green" style={{ fontSize: 9 }}>✓ VALID TICKET</span></div>
-              <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 15, color: '#e8f0e8', marginBottom: 4, lineHeight: 1.3 }}>{selectedTicket.eventName}</div>
-              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.4)', marginBottom: 20 }}>
-                {formatDate(selectedTicket.eventDate)} · {selectedTicket.eventTime} · {selectedTicket.eventLocation}
+          <div className="modal-overlay" onClick={() => setSelectedTicket(null)}>
+            <div className="ticket-modal" onClick={e => e.stopPropagation()}>
+              <div style={{ background: 'rgba(0,255,136,0.06)', padding: '24px 28px', borderBottom: '1px dashed rgba(0,255,136,0.2)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <span className="badge badge-green" style={{ fontSize: 9 }}>✓ VALID TICKET</span>
+                  <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.4)' }}>#{selectedTicket.tokenId}</span>
+                </div>
+                <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 17, color: '#e8f0e8', marginBottom: 6 }}>{selectedTicket.eventName}</div>
+                <div style={{ fontSize: 12, color: 'rgba(232,240,232,0.5)', marginBottom: 2 }}>📅 {new Date(selectedTicket.eventDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                <div style={{ fontSize: 12, color: 'rgba(232,240,232,0.5)' }}>📍 {selectedTicket.eventLocation}</div>
               </div>
-              <div style={{ background: '#040608', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 10, padding: 20, marginBottom: 20, display: 'inline-block' }}>
-                {qrDataUrl ? (
-                  <img src={qrDataUrl} alt="QR Code" style={{ width: 180, height: 180, display: 'block' }} />
-                ) : (
-                  <div style={{ width: 180, height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span className="spinner" style={{ width: 24, height: 24 }} />
-                  </div>
-                )}
+              <div style={{ padding: '24px 28px', display: 'flex', justifyContent: 'center', borderBottom: '1px dashed rgba(0,255,136,0.2)', background: '#040608' }}>
+                <div style={{ background: '#040608', padding: 12, borderRadius: 8, border: '1px solid rgba(0,255,136,0.15)' }}>
+                  <QRCode data={`${selectedTicket.id}-${selectedTicket.tokenId}-${selectedTicket.txHash}`} size={140} />
+                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(0,255,136,0.5)', textAlign: 'center', marginTop: 8 }}>SCAN TO VERIFY</div>
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20, textAlign: 'left' }}>
+              <div style={{ padding: '16px 28px' }}>
                 {[
-                  { label: 'TICKET ID', value: `#${selectedTicket.id}` },
-                  { label: 'PAID', value: selectedTicket.amount === 0 ? 'FREE' : `$${selectedTicket.amount} USDC` },
-                  { label: 'BUYER', value: `${selectedTicket.buyerAddress.slice(0, 8)}...` },
-                  { label: 'PURCHASED', value: selectedTicket.purchasedAt.slice(0, 10) },
+                  { label: 'HOLDER', value: selectedTicket.buyerName },
+                  { label: 'WALLET', value: `${selectedTicket.buyerAddress.slice(0, 8)}...${selectedTicket.buyerAddress.slice(-6)}` },
+                  { label: 'PAID', value: `$${selectedTicket.price} USDC` },
+                  { label: 'ISSUED', value: selectedTicket.issuedAt },
                 ].map(row => (
-                  <div key={row.label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 10px' }}>
-                    <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.1em', marginBottom: 3 }}>{row.label}</div>
-                    <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: '#e8f0e8' }}>{row.value}</div>
+                  <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{row.label}</span>
+                    <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: '#e8f0e8' }}>{row.value}</span>
                   </div>
                 ))}
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <a href={`https://testnet.arcscan.app/tx/${selectedTicket.txHash}`} target="_blank" rel="noopener noreferrer" className="btn btn-blue" style={{ flex: 1, fontSize: 11 }}>ARCSCAN ↗</a>
-                <button onClick={() => { setSelectedTicket(null); setQrDataUrl(''); }} className="btn btn-ghost" style={{ flex: 1, fontSize: 11 }}>CLOSE</button>
+                <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+                  <a href={selectedTicket.explorerUrl} target="_blank" rel="noopener noreferrer" className="btn btn-green" style={{ flex: 1, fontSize: 11, textAlign: 'center' }}>ARCSCAN ↗</a>
+                  <button onClick={() => setSelectedTicket(null)} className="btn btn-ghost" style={{ flex: 1, fontSize: 11 }}>CLOSE</button>
+                </div>
               </div>
             </div>
           </div>

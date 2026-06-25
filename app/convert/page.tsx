@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { arcSend } from '@/lib/arc';
+import { useWallet } from '@/context/WalletContext';
 
 const CURRENCIES = [
   { code: 'NGN', name: 'Nigerian Naira',     flag: '🇳🇬', color: '#00ff88' },
@@ -12,17 +14,22 @@ const CURRENCIES = [
   { code: 'AED', name: 'UAE Dirham',         flag: '🇦🇪', color: '#00ff88' },
 ];
 
+type Direction = 'toUSDC' | 'fromUSDC';
+type Step = 'form' | 'confirm' | 'success';
+
 export default function ConvertPage() {
+  const { address, connect } = useWallet();
   const [rates, setRates] = useState<Record<string, number>>({});
   const [loadingRates, setLoadingRates] = useState(true);
   const [selectedCurrency, setSelectedCurrency] = useState('NGN');
   const [amount, setAmount] = useState('');
-  const [direction, setDirection] = useState<'toUSDC' | 'fromUSDC'>('toUSDC');
+  const [direction, setDirection] = useState<Direction>('toUSDC');
   const [recipientAddress, setRecipientAddress] = useState('');
   const [sending, setSending] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [explorerUrl, setExplorerUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<'form' | 'confirm' | 'success'>('form');
+  const [step, setStep] = useState<Step>('form');
 
   useEffect(() => {
     fetch('https://api.exchangerate-api.com/v4/latest/USD')
@@ -40,12 +47,14 @@ export default function ConvertPage() {
   const localDisplay = localAmount > 0 ? localAmount.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0.00';
 
   async function handleSend() {
+    if (!address) { await connect(); return; }
+    if (!recipientAddress || !amount || usdcAmount <= 0) return;
     setSending(true);
     setError(null);
     try {
-      await new Promise(r => setTimeout(r, 2000));
-      const mockHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-      setTxHash(mockHash);
+      const res = await arcSend(recipientAddress, usdcAmount.toFixed(6), 'USDC');
+      setTxHash(res.txHash);
+      setExplorerUrl(res.explorerUrl);
       setStep('success');
     } catch (e: any) {
       setError(e?.message || 'Transaction failed');
@@ -59,18 +68,14 @@ export default function ConvertPage() {
     setAmount('');
     setRecipientAddress('');
     setTxHash(null);
+    setExplorerUrl(null);
     setError(null);
   }
 
   return (
     <>
       <style>{`
-        .convert-grid {
-          display: grid;
-          grid-template-columns: 1fr 300px;
-          gap: 20px;
-          align-items: start;
-        }
+        .convert-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
         @media (max-width: 900px) { .convert-grid { grid-template-columns: 1fr; } }
         @media (max-width: 480px) { .convert-page { padding: 16px 16px 60px !important; } }
       `}</style>
@@ -78,10 +83,16 @@ export default function ConvertPage() {
       <div className="convert-page" style={{ padding: '24px 24px 60px', maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 1 }}>
 
         {/* Header */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · CONVERT</div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>Currency Converter</h1>
-          <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)' }}>Convert any currency to USDC and send via Arc — sub-second settlement</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
+          <div>
+            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · CONVERT</div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>Currency Converter</h1>
+            <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)' }}>Convert any currency to USDC and send via Arc — sub-second settlement</p>
+          </div>
+          {!address
+            ? <button onClick={connect} className="btn btn-green" style={{ fontSize: 11 }}>🦊 CONNECT WALLET</button>
+            : <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00ff88', padding: '6px 12px', borderRadius: 6, background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.2)' }}>{address.slice(0, 6)}…{address.slice(-4)}</div>
+          }
         </div>
 
         {/* SUCCESS */}
@@ -89,13 +100,13 @@ export default function ConvertPage() {
           <div className="panel" style={{ padding: 40, textAlign: 'center', maxWidth: 560, margin: '0 auto' }}>
             <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
             <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 20, color: '#00ff88', marginBottom: 8 }}>TRANSACTION SENT</div>
-            <div style={{ fontSize: 14, color: 'rgba(232,240,232,0.5)', marginBottom: 24 }}>{usdcDisplay} USDC sent successfully</div>
+            <div style={{ fontSize: 14, color: 'rgba(232,240,232,0.5)', marginBottom: 24 }}>{usdcDisplay} USDC sent successfully on Arc</div>
             <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '14px 16px', marginBottom: 24, textAlign: 'left' }}>
               <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 6 }}>TX HASH</div>
               <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00ff88', wordBreak: 'break-all' }}>{txHash}</div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <a href={`https://testnet.arcscan.app/tx/${txHash}`} target="_blank" rel="noopener noreferrer" className="btn btn-green" style={{ flex: 1, fontSize: 12 }}>VIEW ON ARCSCAN ↗</a>
+              <a href={explorerUrl || '#'} target="_blank" rel="noopener noreferrer" className="btn btn-green" style={{ flex: 1, fontSize: 12 }}>VIEW ON ARCSCAN ↗</a>
               <button onClick={reset} className="btn btn-ghost" style={{ flex: 1, fontSize: 12 }}>NEW CONVERSION</button>
             </div>
           </div>
@@ -104,19 +115,17 @@ export default function ConvertPage() {
         {/* CONFIRM */}
         {step === 'confirm' && (
           <div className="panel" style={{ maxWidth: 560, margin: '0 auto' }}>
-            <div className="panel-header">
-              <div className="panel-title">CONFIRM TRANSACTION</div>
-            </div>
+            <div className="panel-header"><div className="panel-title">CONFIRM TRANSACTION</div></div>
             <div style={{ padding: 24 }}>
               {[
                 { label: 'YOU SEND', value: direction === 'fromUSDC' ? `${numAmount} USDC` : `${localDisplay} ${selectedCurrency}` },
                 { label: 'RECIPIENT GETS', value: `${usdcDisplay} USDC` },
                 { label: 'EXCHANGE RATE', value: `1 USDC = ${rate.toLocaleString()} ${selectedCurrency}` },
-                { label: 'NETWORK FEE', value: '~$0.01 USDC' },
+                { label: 'NETWORK FEE', value: '~$0.01 USDC (Arc Testnet)' },
                 { label: 'RECIPIENT', value: `${recipientAddress.slice(0, 10)}...${recipientAddress.slice(-8)}` },
                 { label: 'NETWORK', value: 'Arc Testnet' },
               ].map(row => (
-                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center' }}>
+                <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                   <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.35)', letterSpacing: '0.1em' }}>{row.label}</span>
                   <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 13, fontWeight: 700, color: '#e8f0e8' }}>{row.value}</span>
                 </div>
@@ -149,14 +158,14 @@ export default function ConvertPage() {
 
                 {/* Direction toggle */}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-                  {(['toUSDC', 'fromUSDC'] as const).map(d => (
+                  {(['toUSDC', 'fromUSDC'] as Direction[]).map(d => (
                     <button key={d} onClick={() => { setDirection(d); setAmount(''); }} className={direction === d ? 'btn btn-green' : 'btn btn-ghost'} style={{ flex: 1, fontSize: 11 }}>
                       {d === 'toUSDC' ? `${selectedCurrency} → USDC` : `USDC → ${selectedCurrency}`}
                     </button>
                   ))}
                 </div>
 
-                {/* Amount input */}
+                {/* Amount */}
                 <div style={{ marginBottom: 16 }}>
                   <label className="label">{direction === 'toUSDC' ? `AMOUNT IN ${selectedCurrency}` : 'AMOUNT IN USDC'}</label>
                   <div style={{ display: 'flex', gap: 10 }}>
@@ -193,7 +202,7 @@ export default function ConvertPage() {
                   </div>
                 )}
 
-                {/* Rate info */}
+                {/* Rate */}
                 {!loadingRates && (
                   <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 14px', marginBottom: 20, display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.35)' }}>EXCHANGE RATE</span>
@@ -214,12 +223,16 @@ export default function ConvertPage() {
                 </div>
 
                 <button
-                  onClick={() => setStep('confirm')}
+                  onClick={() => {
+                    if (!address) { connect(); return; }
+                    if (!amount || !recipientAddress || usdcAmount <= 0) return;
+                    setStep('confirm');
+                  }}
                   className="btn btn-green"
                   style={{ width: '100%', fontSize: 14, padding: '14px' }}
                   disabled={!amount || !recipientAddress || usdcAmount <= 0 || loadingRates}
                 >
-                  PREVIEW TRANSACTION →
+                  {!address ? '🦊 CONNECT WALLET' : 'PREVIEW TRANSACTION →'}
                 </button>
               </div>
             </div>
@@ -237,7 +250,9 @@ export default function ConvertPage() {
                           <span style={{ fontSize: 16 }}>{c.flag}</span>
                           <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: c.color }}>{c.code}</span>
                         </div>
-                        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: 'rgba(232,240,232,0.5)' }}>{r > 0 ? r.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}</span>
+                        <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: 'rgba(232,240,232,0.5)' }}>
+                          {r > 0 ? r.toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+                        </span>
                       </button>
                     );
                   })}

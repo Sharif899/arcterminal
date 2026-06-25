@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { arcSend } from '@/lib/arc';
+import { useWallet } from '@/context/WalletContext';
 
 interface NanoService {
   id: string;
@@ -21,6 +23,7 @@ interface NanoTransaction {
   amount: number;
   timestamp: string;
   txHash: string;
+  explorerUrl: string;
   status: 'confirmed';
 }
 
@@ -37,17 +40,13 @@ function shortId() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-function mockTxHash() {
-  return '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-}
-
 const DEMO_SERVICES: NanoService[] = [
-  { id: shortId(), name: 'Arc Price Oracle', description: 'Real-time USDC price feeds. Pay per query.', pricePerCall: 0.001, category: 'Data', icon: '📡', calls: 0, earned: 0, wallet: '0xOracle1234567890abcdef1234567890abcdef12' },
-  { id: shortId(), name: 'AI Translation API', description: 'Translate text to any language. Pay per character block.', pricePerCall: 0.0005, category: 'AI', icon: '🌍', calls: 0, earned: 0, wallet: '0xTranslate1234567890abcdef1234567890abcd' },
-  { id: shortId(), name: 'KYC Verification', description: 'Instant wallet risk scoring. Pay per check.', pricePerCall: 0.005, category: 'Compliance', icon: '🔒', calls: 0, earned: 0, wallet: '0xKYC1234567890abcdef1234567890abcdef1234' },
-  { id: shortId(), name: 'Weather Data Feed', description: 'Live weather for any city. Pay per API call.', pricePerCall: 0.0002, category: 'Data', icon: '🌤', calls: 0, earned: 0, wallet: '0xWeather1234567890abcdef1234567890abcde' },
-  { id: shortId(), name: 'Agent Compute Unit', description: 'Serverless compute for AI agents. Pay per execution.', pricePerCall: 0.002, category: 'Compute', icon: '⚙️', calls: 0, earned: 0, wallet: '0xCompute1234567890abcdef1234567890abcde' },
-  { id: shortId(), name: 'USDC Routing Engine', description: 'Optimal payment routing across chains. Pay per route.', pricePerCall: 0.003, category: 'Finance', icon: '🔀', calls: 0, earned: 0, wallet: '0xRouter1234567890abcdef1234567890abcdef' },
+  { id: shortId(), name: 'Arc Price Oracle', description: 'Real-time USDC price feeds. Pay per query.', pricePerCall: 0.01, category: 'Data', icon: '📡', calls: 0, earned: 0, wallet: '0x1234567890abcdef1234567890abcdef12345678' },
+  { id: shortId(), name: 'AI Translation API', description: 'Translate text to any language. Pay per call.', pricePerCall: 0.01, category: 'AI', icon: '🌍', calls: 0, earned: 0, wallet: '0xabcdef1234567890abcdef1234567890abcdef12' },
+  { id: shortId(), name: 'KYC Verification', description: 'Instant wallet risk scoring. Pay per check.', pricePerCall: 0.05, category: 'Compliance', icon: '🔒', calls: 0, earned: 0, wallet: '0x2345678901abcdef2345678901abcdef23456789' },
+  { id: shortId(), name: 'Weather Data Feed', description: 'Live weather for any city. Pay per API call.', pricePerCall: 0.01, category: 'Data', icon: '🌤', calls: 0, earned: 0, wallet: '0x3456789012abcdef3456789012abcdef34567890' },
+  { id: shortId(), name: 'Agent Compute Unit', description: 'Serverless compute for AI agents. Pay per execution.', pricePerCall: 0.02, category: 'Compute', icon: '⚙️', calls: 0, earned: 0, wallet: '0x4567890123abcdef4567890123abcdef45678901' },
+  { id: shortId(), name: 'USDC Routing Engine', description: 'Optimal payment routing across chains. Pay per route.', pricePerCall: 0.03, category: 'Finance', icon: '🔀', calls: 0, earned: 0, wallet: '0x5678901234abcdef5678901234abcdef56789012' },
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -55,14 +54,15 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function NanopayPage() {
+  const { address, connect } = useWallet();
   const [services, setServices] = useState<NanoService[]>(DEMO_SERVICES);
   const [transactions, setTransactions] = useState<NanoTransaction[]>([]);
   const [session, setSession] = useState<StreamSession | null>(null);
-  const [myWallet] = useState('0xUser' + shortId() + '...Arc');
   const [totalSpent, setTotalSpent] = useState(0);
   const [totalCalls, setTotalCalls] = useState(0);
   const [view, setView] = useState<'marketplace' | 'stream' | 'history'>('marketplace');
   const [paying, setPaying] = useState<string | null>(null);
+  const [error, setError] = useState('');
   const sessionRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -70,38 +70,84 @@ export default function NanopayPage() {
   }, []);
 
   async function singleCall(service: NanoService) {
+    if (!address) { await connect(); return; }
     setPaying(service.id);
-    await new Promise(r => setTimeout(r, 800));
-    const txHash = mockTxHash();
-    const tx: NanoTransaction = {
-      id: shortId(), from: myWallet, to: service.wallet.slice(0, 12) + '...',
-      service: service.name, amount: service.pricePerCall,
-      timestamp: new Date().toLocaleTimeString(), txHash, status: 'confirmed',
-    };
-    setTransactions(prev => [tx, ...prev.slice(0, 49)]);
-    setServices(prev => prev.map(s => s.id === service.id ? { ...s, calls: s.calls + 1, earned: s.earned + s.pricePerCall } : s));
-    setTotalSpent(t => t + service.pricePerCall);
-    setTotalCalls(t => t + 1);
-    setPaying(null);
-  }
-
-  function startStream(service: NanoService) {
-    if (session?.active) stopStream();
-    setView('stream');
-    setSession({ serviceId: service.id, serviceName: service.name, pricePerCall: service.pricePerCall, callsThisSession: 0, totalSpent: 0, active: true });
-    sessionRef.current = setInterval(() => {
-      const txHash = mockTxHash();
+    setError('');
+    try {
+      const res = await arcSend(service.wallet, service.pricePerCall.toFixed(6), 'USDC');
       const tx: NanoTransaction = {
-        id: shortId(), from: myWallet, to: service.wallet.slice(0, 12) + '...',
+        id: shortId(), from: address,
+        to: service.wallet.slice(0, 12) + '...',
         service: service.name, amount: service.pricePerCall,
-        timestamp: new Date().toLocaleTimeString(), txHash, status: 'confirmed',
+        timestamp: new Date().toLocaleTimeString(),
+        txHash: res.txHash, explorerUrl: res.explorerUrl,
+        status: 'confirmed',
       };
       setTransactions(prev => [tx, ...prev.slice(0, 49)]);
       setServices(prev => prev.map(s => s.id === service.id ? { ...s, calls: s.calls + 1, earned: s.earned + s.pricePerCall } : s));
       setTotalSpent(t => t + service.pricePerCall);
       setTotalCalls(t => t + 1);
-      setSession(prev => prev ? { ...prev, callsThisSession: prev.callsThisSession + 1, totalSpent: prev.totalSpent + prev.pricePerCall } : null);
-    }, 1500);
+    } catch (e: any) {
+      setError(e?.message || 'Payment failed');
+    }
+    setPaying(null);
+  }
+
+  async function startStream(service: NanoService) {
+    if (!address) { await connect(); return; }
+    if (session?.active) stopStream();
+    setView('stream');
+    setError('');
+    setSession({
+      serviceId: service.id, serviceName: service.name,
+      pricePerCall: service.pricePerCall,
+      callsThisSession: 0, totalSpent: 0, active: true,
+    });
+
+    // Fire first call immediately
+    try {
+      const res = await arcSend(service.wallet, service.pricePerCall.toFixed(6), 'USDC');
+      const tx: NanoTransaction = {
+        id: shortId(), from: address,
+        to: service.wallet.slice(0, 12) + '...',
+        service: service.name, amount: service.pricePerCall,
+        timestamp: new Date().toLocaleTimeString(),
+        txHash: res.txHash, explorerUrl: res.explorerUrl,
+        status: 'confirmed',
+      };
+      setTransactions(prev => [tx, ...prev.slice(0, 49)]);
+      setServices(prev => prev.map(s => s.id === service.id ? { ...s, calls: s.calls + 1, earned: s.earned + s.pricePerCall } : s));
+      setTotalSpent(t => t + service.pricePerCall);
+      setTotalCalls(t => t + 1);
+      setSession(prev => prev ? { ...prev, callsThisSession: 1, totalSpent: service.pricePerCall } : null);
+    } catch (e: any) {
+      setError(e?.message || 'Stream failed');
+      setSession(prev => prev ? { ...prev, active: false } : null);
+      return;
+    }
+
+    // Continue streaming every 10 seconds
+    sessionRef.current = setInterval(async () => {
+      try {
+        const res = await arcSend(service.wallet, service.pricePerCall.toFixed(6), 'USDC');
+        const tx: NanoTransaction = {
+          id: shortId(), from: address,
+          to: service.wallet.slice(0, 12) + '...',
+          service: service.name, amount: service.pricePerCall,
+          timestamp: new Date().toLocaleTimeString(),
+          txHash: res.txHash, explorerUrl: res.explorerUrl,
+          status: 'confirmed',
+        };
+        setTransactions(prev => [tx, ...prev.slice(0, 49)]);
+        setServices(prev => prev.map(s => s.id === service.id ? { ...s, calls: s.calls + 1, earned: s.earned + s.pricePerCall } : s));
+        setTotalSpent(t => t + service.pricePerCall);
+        setTotalCalls(t => t + 1);
+        setSession(prev => prev ? { ...prev, callsThisSession: prev.callsThisSession + 1, totalSpent: prev.totalSpent + prev.pricePerCall } : null);
+      } catch (e: any) {
+        setError(e?.message || 'Stream payment failed');
+        stopStream();
+      }
+    }, 10000);
   }
 
   function stopStream() {
@@ -118,23 +164,9 @@ export default function NanopayPage() {
         .nano-stream-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
         .nano-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
         .hide-mobile { display: table-cell; }
-
-        @media (max-width: 1024px) {
-          .nano-stream-grid { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 768px) {
-          .nano-marketplace { grid-template-columns: repeat(2, 1fr); }
-          .nano-stats { grid-template-columns: repeat(2, 1fr); }
-          .nano-stream-stats { grid-template-columns: 1fr; }
-          .hide-mobile { display: none; }
-        }
-        @media (max-width: 480px) {
-          .nano-marketplace { grid-template-columns: 1fr; }
-          .nano-stats { grid-template-columns: repeat(2, 1fr); }
-          .nano-page { padding: 16px 16px 60px !important; }
-          .nano-tabs { gap: 6px; }
-          .nano-tabs button { font-size: 10px !important; padding: 6px 10px !important; }
-        }
+        @media (max-width: 1024px) { .nano-stream-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .nano-marketplace { grid-template-columns: repeat(2, 1fr); } .nano-stats { grid-template-columns: repeat(2, 1fr); } .nano-stream-stats { grid-template-columns: 1fr; } .hide-mobile { display: none; } }
+        @media (max-width: 480px) { .nano-marketplace { grid-template-columns: 1fr; } .nano-page { padding: 16px 16px 60px !important; } .nano-tabs button { font-size: 10px !important; padding: 6px 10px !important; } }
       `}</style>
 
       <div className="nano-page" style={{ padding: '24px 24px 60px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
@@ -144,20 +176,32 @@ export default function NanopayPage() {
           <div>
             <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · CIRCLE NANOPAYMENTS</div>
             <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>Nanopayments</h1>
-            <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)', maxWidth: 500 }}>Pay-per-use micro-transactions between agents and services — as low as $0.0001 USDC per call</p>
+            <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)', maxWidth: 500 }}>Pay-per-use micro-transactions between agents and services on Arc</p>
           </div>
-          <div className="nano-tabs">
-            <button onClick={() => setView('marketplace')} className={view === 'marketplace' ? 'btn btn-green' : 'btn btn-ghost'} style={{ fontSize: 11 }}>🛒 MARKETPLACE</button>
-            <button onClick={() => setView('stream')} className={view === 'stream' ? 'btn btn-green' : 'btn btn-ghost'} style={{ fontSize: 11 }}>⚡ STREAM {session?.active ? '●' : ''}</button>
-            <button onClick={() => setView('history')} className={view === 'history' ? 'btn btn-green' : 'btn btn-ghost'} style={{ fontSize: 11 }}>📜 HISTORY ({transactions.length})</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {!address
+              ? <button onClick={connect} className="btn btn-green" style={{ fontSize: 11 }}>🦊 CONNECT WALLET</button>
+              : <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00ff88', padding: '6px 12px', borderRadius: 6, background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.2)' }}>{address.slice(0, 6)}…{address.slice(-4)}</div>
+            }
+            <div className="nano-tabs">
+              <button onClick={() => setView('marketplace')} className={view === 'marketplace' ? 'btn btn-green' : 'btn btn-ghost'} style={{ fontSize: 11 }}>🛒 MARKETPLACE</button>
+              <button onClick={() => setView('stream')} className={view === 'stream' ? 'btn btn-green' : 'btn btn-ghost'} style={{ fontSize: 11 }}>⚡ STREAM {session?.active ? '●' : ''}</button>
+              <button onClick={() => setView('history')} className={view === 'history' ? 'btn btn-green' : 'btn btn-ghost'} style={{ fontSize: 11 }}>📜 HISTORY ({transactions.length})</button>
+            </div>
           </div>
         </div>
+
+        {error && (
+          <div style={{ background: 'rgba(255,51,85,0.08)', border: '1px solid rgba(255,51,85,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#ff3355' }}>
+            ⚠ {error} <button onClick={() => setError('')} style={{ marginLeft: 12, background: 'none', border: 'none', color: '#ff3355', cursor: 'pointer' }}>✕</button>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="nano-stats">
           {[
             { label: 'TOTAL CALLS', value: String(totalCalls), color: '#00aaff' },
-            { label: 'TOTAL SPENT', value: `$${totalSpent.toFixed(4)}`, color: '#00ff88' },
+            { label: 'TOTAL SPENT', value: `$${totalSpent.toFixed(4)} USDC`, color: '#00ff88' },
             { label: 'AVG PER CALL', value: totalCalls > 0 ? `$${(totalSpent / totalCalls).toFixed(4)}` : '$0.0000', color: '#ffaa00' },
             { label: 'SERVICES', value: String(services.length), color: '#aa55ff' },
           ].map(s => (
@@ -244,7 +288,7 @@ export default function NanopayPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <span style={{ color: '#00ff88', fontSize: 10 }}>✓</span>
                           <span style={{ color: 'rgba(232,240,232,0.4)', fontSize: 10 }}>{tx.timestamp}</span>
-                          <a href={`https://testnet.arcscan.app/tx/${tx.txHash}`} target="_blank" rel="noopener noreferrer" style={{ color: '#00aaff', fontSize: 10, textDecoration: 'none' }}>
+                          <a href={tx.explorerUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#00aaff', fontSize: 10, textDecoration: 'none' }}>
                             {tx.txHash.slice(0, 10)}... ↗
                           </a>
                         </div>
@@ -256,7 +300,6 @@ export default function NanopayPage() {
               )}
             </div>
 
-            {/* Explainer */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="panel" style={{ padding: 20 }}>
                 <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00ff88', letterSpacing: '0.15em', marginBottom: 12 }}>⚡ WHAT IS NANOPAY?</div>
@@ -264,7 +307,7 @@ export default function NanopayPage() {
                   Pay per API call — fractions of a cent at a time. No subscriptions. No invoices. Pay exactly for what you use.
                 </div>
                 {[
-                  { label: 'Min payment', value: '$0.0001 USDC' },
+                  { label: 'Min payment', value: '$0.01 USDC' },
                   { label: 'Settlement', value: '< 1 second' },
                   { label: 'Gas fee', value: '~$0.01' },
                   { label: 'Network', value: 'Arc Testnet' },
@@ -313,9 +356,9 @@ export default function NanopayPage() {
                         <td style={{ padding: '12px 16px', fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.4)', borderBottom: '1px solid rgba(255,255,255,0.03)', whiteSpace: 'nowrap' }}>{tx.timestamp}</td>
                         <td style={{ padding: '12px 16px', fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: '#e8f0e8', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>{tx.service}</td>
                         <td style={{ padding: '12px 16px', fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: '#00ff88', borderBottom: '1px solid rgba(255,255,255,0.03)', whiteSpace: 'nowrap' }}>${tx.amount.toFixed(4)}</td>
-                        <td className="hide-mobile" style={{ padding: '12px 16px', fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.4)', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>{tx.from}</td>
+                        <td className="hide-mobile" style={{ padding: '12px 16px', fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.4)', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>{tx.from.slice(0, 10)}...</td>
                         <td className="hide-mobile" style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                          <a href={`https://testnet.arcscan.app/tx/${tx.txHash}`} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00aaff', textDecoration: 'none' }}>
+                          <a href={tx.explorerUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00aaff', textDecoration: 'none' }}>
                             {tx.txHash.slice(0, 14)}... ↗
                           </a>
                         </td>
