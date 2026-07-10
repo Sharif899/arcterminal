@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { arcSend } from '@/lib/arc';
 import { useWallet } from '@/context/WalletContext';
+import { callContract, CONTRACTS, RATES_ABI, INVOICE_ABI } from '@/lib/contracts';
 
 const CURRENCIES = [
   { code: 'NGN', name: 'Nigerian Naira',     flag: '🇳🇬', color: '#00ff88' },
@@ -34,7 +35,27 @@ export default function ConvertPage() {
   useEffect(() => {
     fetch('https://api.exchangerate-api.com/v4/latest/USD')
       .then(r => r.json())
-      .then(d => { setRates(d.rates); setLoadingRates(false); })
+      .then(d => {
+        setRates(d.rates);
+        setLoadingRates(false);
+        // Record rates onchain
+        const currencies = ['NGN', 'GHS', 'KES', 'EUR', 'GBP', 'ZAR'];
+        currencies.forEach(async (code) => {
+          const rateVal = d.rates[code];
+          if (rateVal) {
+            try {
+              await callContract(
+                CONTRACTS.ArcRatesRegistry,
+                RATES_ABI,
+                'recordRate',
+                [code, BigInt(Math.floor(rateVal * 10000))]
+              );
+            } catch (e) {
+              // Silent fail — rates recording is best effort
+            }
+          }
+        });
+      })
       .catch(() => setLoadingRates(false));
   }, []);
 
@@ -53,6 +74,45 @@ export default function ConvertPage() {
     setError(null);
     try {
       const res = await arcSend(recipientAddress, usdcAmount.toFixed(6), 'USDC');
+
+      // Record conversion on ArcRatesRegistry contract
+      try {
+        await callContract(
+          CONTRACTS.ArcRatesRegistry,
+          RATES_ABI,
+          'recordConversion',
+          [
+            direction === 'toUSDC' ? selectedCurrency : 'USDC',
+            direction === 'toUSDC' ? 'USDC' : selectedCurrency,
+            BigInt(Math.floor(numAmount * 10000)),
+            BigInt(Math.floor(usdcAmount * 10000)),
+            BigInt(Math.floor(rate * 10000)),
+            recipientAddress as `0x${string}`,
+            res.txHash,
+          ]
+        );
+      } catch (contractErr) {
+        console.log('Contract record:', contractErr);
+      }
+
+      // Also create an invoice record on ArcInvoiceRegistry
+      try {
+        await callContract(
+          CONTRACTS.ArcInvoiceRegistry,
+          INVOICE_ABI,
+          'createInvoice',
+          [
+            BigInt(Math.floor(usdcAmount * 100)),
+            'USDC',
+            `Convert ${numAmount} ${selectedCurrency} → USDC`,
+            selectedCurrency,
+            BigInt(Math.floor(rate * 10000)),
+          ]
+        );
+      } catch (contractErr) {
+        console.log('Invoice record:', contractErr);
+      }
+
       setTxHash(res.txHash);
       setExplorerUrl(res.explorerUrl);
       setStep('success');
@@ -101,9 +161,16 @@ export default function ConvertPage() {
             <div style={{ fontSize: 56, marginBottom: 16 }}>✅</div>
             <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 20, color: '#00ff88', marginBottom: 8 }}>TRANSACTION SENT</div>
             <div style={{ fontSize: 14, color: 'rgba(232,240,232,0.5)', marginBottom: 24 }}>{usdcDisplay} USDC sent successfully on Arc</div>
-            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '14px 16px', marginBottom: 24, textAlign: 'left' }}>
+            <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 8, padding: '14px 16px', marginBottom: 16, textAlign: 'left' }}>
               <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 6 }}>TX HASH</div>
               <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00ff88', wordBreak: 'break-all' }}>{txHash}</div>
+            </div>
+            <div style={{ background: 'rgba(0,170,255,0.06)', borderRadius: 8, padding: '10px 16px', marginBottom: 24, textAlign: 'left' }}>
+              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 4 }}>RECORDED ON</div>
+              <a href={`https://testnet.arcscan.app/address/${CONTRACTS.ArcRatesRegistry}`} target="_blank" rel="noopener noreferrer"
+                style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00aaff', textDecoration: 'none' }}>
+                ArcRatesRegistry ↗
+              </a>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <a href={explorerUrl || '#'} target="_blank" rel="noopener noreferrer" className="btn btn-green" style={{ flex: 1, fontSize: 12 }}>VIEW ON ARCSCAN ↗</a>
@@ -124,6 +191,7 @@ export default function ConvertPage() {
                 { label: 'NETWORK FEE', value: '~$0.01 USDC (Arc Testnet)' },
                 { label: 'RECIPIENT', value: `${recipientAddress.slice(0, 10)}...${recipientAddress.slice(-8)}` },
                 { label: 'NETWORK', value: 'Arc Testnet' },
+                { label: 'CONTRACT', value: 'ArcRatesRegistry' },
               ].map(row => (
                 <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                   <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.35)', letterSpacing: '0.1em' }}>{row.label}</span>
@@ -155,8 +223,6 @@ export default function ConvertPage() {
                 }
               </div>
               <div style={{ padding: 24 }}>
-
-                {/* Direction toggle */}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
                   {(['toUSDC', 'fromUSDC'] as Direction[]).map(d => (
                     <button key={d} onClick={() => { setDirection(d); setAmount(''); }} className={direction === d ? 'btn btn-green' : 'btn btn-ghost'} style={{ flex: 1, fontSize: 11 }}>
@@ -164,8 +230,6 @@ export default function ConvertPage() {
                     </button>
                   ))}
                 </div>
-
-                {/* Amount */}
                 <div style={{ marginBottom: 16 }}>
                   <label className="label">{direction === 'toUSDC' ? `AMOUNT IN ${selectedCurrency}` : 'AMOUNT IN USDC'}</label>
                   <div style={{ display: 'flex', gap: 10 }}>
@@ -177,13 +241,9 @@ export default function ConvertPage() {
                     )}
                   </div>
                 </div>
-
-                {/* Flip */}
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
                   <button onClick={() => { setDirection(d => d === 'toUSDC' ? 'fromUSDC' : 'toUSDC'); setAmount(''); }} className="btn btn-ghost" style={{ fontSize: 18, padding: '6px 20px' }}>⇅</button>
                 </div>
-
-                {/* Output */}
                 <div style={{ marginBottom: 24 }}>
                   <label className="label">{direction === 'toUSDC' ? 'YOU GET (USDC)' : `EQUIVALENT IN ${selectedCurrency}`}</label>
                   <div style={{ background: 'rgba(0,255,136,0.04)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 6, padding: '14px 16px', fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 22, color: '#00ff88' }}>
@@ -191,8 +251,6 @@ export default function ConvertPage() {
                     <span style={{ fontSize: 13, color: 'rgba(0,255,136,0.5)', marginLeft: 8 }}>{direction === 'toUSDC' ? 'USDC' : selectedCurrency}</span>
                   </div>
                 </div>
-
-                {/* Currency selector for fromUSDC */}
                 {direction === 'fromUSDC' && (
                   <div style={{ marginBottom: 24 }}>
                     <label className="label">TARGET CURRENCY</label>
@@ -201,27 +259,20 @@ export default function ConvertPage() {
                     </select>
                   </div>
                 )}
-
-                {/* Rate */}
                 {!loadingRates && (
                   <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '10px 14px', marginBottom: 20, display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.35)' }}>EXCHANGE RATE</span>
                     <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: cur?.color }}>1 USDC = {rate.toLocaleString(undefined, { maximumFractionDigits: 4 })} {selectedCurrency}</span>
                   </div>
                 )}
-
-                {/* Recipient */}
                 <div style={{ marginBottom: 20 }}>
                   <label className="label">RECIPIENT WALLET ADDRESS (ARC)</label>
                   <input className="input" placeholder="0x..." value={recipientAddress} onChange={e => setRecipientAddress(e.target.value)} />
                 </div>
-
-                {/* Fee */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 12, color: 'rgba(232,240,232,0.35)', fontFamily: 'Space Mono, monospace' }}>
                   <span>NETWORK FEE</span>
                   <span style={{ color: '#00ff88' }}>~$0.01 USDC</span>
                 </div>
-
                 <button
                   onClick={() => {
                     if (!address) { connect(); return; }
@@ -258,7 +309,6 @@ export default function ConvertPage() {
                   })}
                 </div>
               </div>
-
               <div className="panel" style={{ padding: 16 }}>
                 <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00ff88', letterSpacing: '0.15em', marginBottom: 10 }}>⚡ WHY ARC?</div>
                 {[
@@ -266,12 +316,17 @@ export default function ConvertPage() {
                   { label: 'Gas fee', value: '~$0.01' },
                   { label: 'Token', value: 'USDC / EURC' },
                   { label: 'Finality', value: 'Deterministic' },
+                  { label: 'Contract', value: 'ArcRatesRegistry' },
                 ].map(i => (
                   <div key={i.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{i.label}</span>
                     <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: '#e8f0e8' }}>{i.value}</span>
                   </div>
                 ))}
+                <a href={`https://testnet.arcscan.app/address/${CONTRACTS.ArcRatesRegistry}`} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'block', marginTop: 12, fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', textDecoration: 'none' }}>
+                  VIEW CONTRACT ↗
+                </a>
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { arcSend } from '@/lib/arc';
 import { useWallet } from '@/context/WalletContext';
+import { callContract, CONTRACTS, TICKET_ABI } from '@/lib/contracts';
 
 interface Event {
   id: string;
@@ -104,12 +105,13 @@ export default function TicketsPage() {
   });
   const [addError, setAddError] = useState('');
 
-  function addEvent() {
+  async function addEvent() {
     setAddError('');
     if (!newEvent.name) return setAddError('Event name required');
     if (!newEvent.date) return setAddError('Event date required');
     if (!newEvent.price || parseFloat(newEvent.price) < 0) return setAddError('Valid price required');
     if (!newEvent.walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(newEvent.walletAddress)) return setAddError('Valid wallet address required');
+
     const event: Event = {
       id: shortId(), name: newEvent.name, description: newEvent.description,
       date: newEvent.date, time: newEvent.time, location: newEvent.location,
@@ -117,6 +119,26 @@ export default function TicketsPage() {
       soldTickets: 0, walletAddress: newEvent.walletAddress,
       category: newEvent.category, createdAt: new Date().toLocaleDateString(),
     };
+
+    // Record event on ArcTicketRegistry contract
+    try {
+      const dateTimestamp = BigInt(Math.floor(new Date(newEvent.date).getTime() / 1000));
+      await callContract(
+        CONTRACTS.ArcTicketRegistry,
+        TICKET_ABI,
+        'createEvent',
+        [
+          event.name,
+          event.location,
+          dateTimestamp,
+          BigInt(Math.floor(event.price * 100)),
+          BigInt(parseInt(newEvent.totalTickets) || 100),
+        ]
+      );
+    } catch (contractErr) {
+      console.log('Contract record:', contractErr);
+    }
+
     setEvents(prev => [event, ...prev]);
     setNewEvent({ name: '', description: '', date: '', time: '', location: '', price: '', totalTickets: '', walletAddress: '', category: 'Conference' });
     setShowAddForm(false);
@@ -130,6 +152,24 @@ export default function TicketsPage() {
     try {
       const res = await arcSend(event.walletAddress, event.price.toFixed(2), 'USDC');
       const tokenId = shortId();
+
+      // Mint ticket on ArcTicketRegistry contract
+      try {
+        await callContract(
+          CONTRACTS.ArcTicketRegistry,
+          TICKET_ABI,
+          'mintTicket',
+          [
+            BigInt(0), // eventId — use 0 for demo events
+            buyerName,
+            BigInt(Math.floor(event.price * 100)),
+            tokenId,
+          ]
+        );
+      } catch (contractErr) {
+        console.log('Contract record:', contractErr);
+      }
+
       const ticket: Ticket = {
         id: shortId(), eventId: event.id, eventName: event.name,
         eventDate: event.date, eventLocation: event.location,
@@ -350,6 +390,7 @@ export default function TicketsPage() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 14, color: '#00ff88' }}>${event.price} USDC</span>
+                    <a href={`https://testnet.arcscan.app/address/${CONTRACTS.ArcTicketRegistry}`} target="_blank" rel="noopener noreferrer" className="btn btn-blue" style={{ fontSize: 10, padding: '5px 10px' }}>CONTRACT ↗</a>
                     <button onClick={() => setEvents(prev => prev.filter(e => e.id !== event.id))} className="btn btn-ghost" style={{ fontSize: 10, padding: '5px 10px', color: '#ff3355' }}>DELETE</button>
                   </div>
                 </div>
@@ -375,6 +416,7 @@ export default function TicketsPage() {
                 { label: 'NETWORK', value: 'Arc Testnet' },
                 { label: 'GAS FEE', value: '~$0.01 USDC' },
                 { label: 'TICKET TYPE', value: 'NFT on Arc' },
+                { label: 'CONTRACT', value: 'ArcTicketRegistry' },
               ].map(row => (
                 <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.35)' }}>{row.label}</span>

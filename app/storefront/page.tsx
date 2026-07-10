@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { arcSend } from '@/lib/arc';
 import { useWallet } from '@/context/WalletContext';
+import { callContract, CONTRACTS, STOREFRONT_ABI } from '@/lib/contracts';
 
 interface Product {
   id: string;
@@ -15,6 +16,7 @@ interface Product {
   sold: number;
   walletAddress: string;
   createdAt: string;
+  contractProductId?: number;
 }
 
 interface Order {
@@ -57,11 +59,12 @@ export default function StorefrontPage() {
   const [payError, setPayError] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  function addProduct() {
+  async function addProduct() {
     setAddError('');
     if (!newProduct.name) return setAddError('Product name required');
     if (!newProduct.price || parseFloat(newProduct.price) <= 0) return setAddError('Valid price required');
     if (!newProduct.walletAddress || !/^0x[a-fA-F0-9]{40}$/.test(newProduct.walletAddress)) return setAddError('Valid wallet address required');
+
     const product: Product = {
       id: shortId(), name: newProduct.name, description: newProduct.description,
       price: parseFloat(newProduct.price), currency: 'USDC',
@@ -69,6 +72,25 @@ export default function StorefrontPage() {
       stock: parseInt(newProduct.stock) || 999, sold: 0,
       walletAddress: newProduct.walletAddress, createdAt: new Date().toLocaleDateString(),
     };
+
+    // Record product on ArcStorefrontFactory contract
+    try {
+      await callContract(
+        CONTRACTS.ArcStorefrontFactory,
+        STOREFRONT_ABI,
+        'createProduct',
+        [
+          product.name,
+          product.description,
+          BigInt(Math.floor(product.price * 100)),
+          product.category,
+          BigInt(product.stock),
+        ]
+      );
+    } catch (contractErr) {
+      console.log('Contract record:', contractErr);
+    }
+
     setProducts(prev => [product, ...prev]);
     setNewProduct({ name: '', description: '', price: '', category: 'Digital', stock: '', walletAddress: '' });
     setShowAddForm(false);
@@ -80,6 +102,23 @@ export default function StorefrontPage() {
     setPayError('');
     try {
       const res = await arcSend(product.walletAddress, product.price.toFixed(2), 'USDC');
+
+      // Record order on ArcStorefrontFactory contract
+      try {
+        await callContract(
+          CONTRACTS.ArcStorefrontFactory,
+          STOREFRONT_ABI,
+          'recordOrder',
+          [
+            BigInt(0), // productId — use 0 for demo products
+            product.walletAddress as `0x${string}`,
+            BigInt(Math.floor(product.price * 100)),
+          ]
+        );
+      } catch (contractErr) {
+        console.log('Contract record:', contractErr);
+      }
+
       setProducts(prev => prev.map(p => p.id === product.id ? { ...p, sold: p.sold + 1 } : p));
       setOrders(prev => [{
         id: shortId(), productId: product.id, productName: product.name,
@@ -211,6 +250,12 @@ export default function StorefrontPage() {
                   </div>
                 ))
               }
+              <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                <a href={`https://testnet.arcscan.app/address/${CONTRACTS.ArcStorefrontFactory}`} target="_blank" rel="noopener noreferrer"
+                  style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', textDecoration: 'none' }}>
+                  VIEW CONTRACT ON ARCSCAN ↗
+                </a>
+              </div>
             </div>
           </div>
         )}
@@ -275,6 +320,7 @@ export default function StorefrontPage() {
                 { label: 'NETWORK', value: 'Arc Testnet' },
                 { label: 'GAS FEE', value: '~$0.01 USDC' },
                 { label: 'FINALITY', value: '< 1 second' },
+                { label: 'CONTRACT', value: 'ArcStorefrontFactory' },
               ].map(row => (
                 <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                   <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.35)' }}>{row.label}</span>

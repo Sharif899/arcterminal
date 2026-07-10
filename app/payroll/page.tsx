@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { arcSend } from '@/lib/arc';
 import { useWallet } from '@/context/WalletContext';
+import { callContract, CONTRACTS, PAYROLL_ABI } from '@/lib/contracts';
 
 interface Employee {
   id: string;
@@ -73,6 +74,23 @@ export default function PayrollPage() {
     setError('');
     try {
       const res = await arcSend(emp.wallet, emp.salary.toFixed(2), 'USDC');
+      // Record on ArcPayrollRegistry
+      try {
+        await callContract(
+          CONTRACTS.ArcPayrollRegistry,
+          PAYROLL_ABI,
+          'addEmployee',
+          [emp.wallet as `0x${string}`, emp.name, BigInt(Math.floor(emp.salary * 100))]
+        );
+        await callContract(
+          CONTRACTS.ArcPayrollRegistry,
+          PAYROLL_ABI,
+          'recordPayrollRun',
+          [BigInt(Math.floor(emp.salary * 100)), BigInt(1), 'complete']
+        );
+      } catch (contractErr) {
+        console.log('Contract record:', contractErr);
+      }
       setEmployees(prev => prev.map(e => e.id === id ? {
         ...e, status: 'paid', txHash: res.txHash, explorerUrl: res.explorerUrl,
       } : e));
@@ -100,6 +118,17 @@ export default function PayrollPage() {
           updated[idx] = { ...updated[idx], status: 'paid', txHash: res.txHash, explorerUrl: res.explorerUrl };
           setEmployees([...updated]);
         }
+        // Record on ArcPayrollRegistry
+        try {
+          await callContract(
+            CONTRACTS.ArcPayrollRegistry,
+            PAYROLL_ABI,
+            'recordPayrollRun',
+            [BigInt(Math.floor(emp.salary * 100)), BigInt(1), 'complete']
+          );
+        } catch (contractErr) {
+          console.log('Contract record:', contractErr);
+        }
       } catch (e: any) {
         const idx = updated.findIndex(e => e.id === emp.id);
         if (idx !== -1) {
@@ -108,6 +137,21 @@ export default function PayrollPage() {
         }
         setError(e?.message || 'One or more payments failed');
       }
+    }
+
+    // Record full payroll run on contract
+    try {
+      const totalPaid = updated.filter(e => e.status === 'paid').reduce((s, e) => s + e.salary, 0);
+      const paidCount = updated.filter(e => e.status === 'paid').length;
+      const runStatus = updated.every(e => e.status === 'paid') ? 'complete' : updated.some(e => e.status === 'paid') ? 'partial' : 'failed';
+      await callContract(
+        CONTRACTS.ArcPayrollRegistry,
+        PAYROLL_ABI,
+        'recordPayrollRun',
+        [BigInt(Math.floor(totalPaid * 100)), BigInt(paidCount), runStatus]
+      );
+    } catch (contractErr) {
+      console.log('Contract record:', contractErr);
     }
 
     setPayingId(null);
@@ -314,13 +358,21 @@ export default function PayrollPage() {
                 { label: 'Settlement', value: '< 1 second' },
                 { label: 'Token', value: 'USDC' },
                 { label: 'Network', value: 'Arc Testnet' },
-                { label: 'Method', value: 'kit.send()' },
+                { label: 'Contract', value: 'ArcPayrollRegistry' },
               ].map(i => (
                 <div key={i.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                   <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{i.label}</span>
                   <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: '#e8f0e8' }}>{i.value}</span>
                 </div>
               ))}
+              
+                href={`https://testnet.arcscan.app/address/${CONTRACTS.ArcPayrollRegistry}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: 'block', marginTop: 12, fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', textDecoration: 'none' }}
+              >
+                VIEW CONTRACT ON ARCSCAN ↗
+              </a>
             </div>
           </div>
         </div>

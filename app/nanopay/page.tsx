@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { arcSend } from '@/lib/arc';
 import { useWallet } from '@/context/WalletContext';
+import { callContract, CONTRACTS, NANOPAY_ABI } from '@/lib/contracts';
 
 interface NanoService {
   id: string;
@@ -34,6 +35,7 @@ interface StreamSession {
   callsThisSession: number;
   totalSpent: number;
   active: boolean;
+  contractSessionId?: number;
 }
 
 function shortId() {
@@ -75,6 +77,25 @@ export default function NanopayPage() {
     setError('');
     try {
       const res = await arcSend(service.wallet, service.pricePerCall.toFixed(6), 'USDC');
+
+      // Record on ArcNanopayRegistry contract
+      try {
+        await callContract(
+          CONTRACTS.ArcNanopayRegistry,
+          NANOPAY_ABI,
+          'recordNanoPayment',
+          [
+            BigInt(0), // serviceId
+            service.wallet as `0x${string}`,
+            BigInt(Math.floor(service.pricePerCall * 1000000)),
+            res.txHash,
+            'single',
+          ]
+        );
+      } catch (contractErr) {
+        console.log('Contract record:', contractErr);
+      }
+
       const tx: NanoTransaction = {
         id: shortId(), from: address,
         to: service.wallet.slice(0, 12) + '...',
@@ -98,14 +119,48 @@ export default function NanopayPage() {
     if (session?.active) stopStream();
     setView('stream');
     setError('');
+
+    // Start stream session on contract
+    let contractSessionId = 0;
+    try {
+      await callContract(
+        CONTRACTS.ArcNanopayRegistry,
+        NANOPAY_ABI,
+        'startStream',
+        [BigInt(0)]
+      );
+    } catch (contractErr) {
+      console.log('Contract stream start:', contractErr);
+    }
+
     setSession({
       serviceId: service.id, serviceName: service.name,
       pricePerCall: service.pricePerCall,
       callsThisSession: 0, totalSpent: 0, active: true,
+      contractSessionId,
     });
 
     try {
       const res = await arcSend(service.wallet, service.pricePerCall.toFixed(6), 'USDC');
+
+      // Record first payment
+      try {
+        await callContract(
+          CONTRACTS.ArcNanopayRegistry,
+          NANOPAY_ABI,
+          'recordNanoPayment',
+          [
+            BigInt(0),
+            service.wallet as `0x${string}`,
+            BigInt(Math.floor(service.pricePerCall * 1000000)),
+            res.txHash,
+            'stream',
+          ]
+        );
+      } catch (contractErr) {
+        console.log('Contract record:', contractErr);
+      }
+
       const tx: NanoTransaction = {
         id: shortId(), from: address,
         to: service.wallet.slice(0, 12) + '...',
@@ -128,6 +183,25 @@ export default function NanopayPage() {
     sessionRef.current = setInterval(async () => {
       try {
         const res = await arcSend(service.wallet, service.pricePerCall.toFixed(6), 'USDC');
+
+        // Record each stream payment
+        try {
+          await callContract(
+            CONTRACTS.ArcNanopayRegistry,
+            NANOPAY_ABI,
+            'recordNanoPayment',
+            [
+              BigInt(0),
+              service.wallet as `0x${string}`,
+              BigInt(Math.floor(service.pricePerCall * 1000000)),
+              res.txHash,
+              'stream',
+            ]
+          );
+        } catch (contractErr) {
+          console.log('Contract record:', contractErr);
+        }
+
         const tx: NanoTransaction = {
           id: shortId(), from: address,
           to: service.wallet.slice(0, 12) + '...',
@@ -150,6 +224,19 @@ export default function NanopayPage() {
 
   function stopStream() {
     if (sessionRef.current) clearInterval(sessionRef.current);
+    // End stream on contract
+    if (session) {
+      callContract(
+        CONTRACTS.ArcNanopayRegistry,
+        NANOPAY_ABI,
+        'endStream',
+        [
+          BigInt(session.contractSessionId || 0),
+          BigInt(session.callsThisSession),
+          BigInt(Math.floor(session.totalSpent * 1000000)),
+        ]
+      ).catch(e => console.log('End stream contract:', e));
+    }
     setSession(prev => prev ? { ...prev, active: false } : null);
   }
 
@@ -305,13 +392,17 @@ export default function NanopayPage() {
                   { label: 'Settlement', value: '< 1 second' },
                   { label: 'Gas fee', value: '~$0.01' },
                   { label: 'Network', value: 'Arc Testnet' },
-                  { label: 'Circle tool', value: 'Nanopayments API' },
+                  { label: 'Contract', value: 'ArcNanopayRegistry' },
                 ].map(i => (
                   <div key={i.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                     <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{i.label}</span>
                     <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: '#e8f0e8' }}>{i.value}</span>
                   </div>
                 ))}
+                <a href={`https://testnet.arcscan.app/address/${CONTRACTS.ArcNanopayRegistry}`} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'block', marginTop: 12, fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', textDecoration: 'none' }}>
+                  VIEW CONTRACT ↗
+                </a>
               </div>
               <div className="panel" style={{ padding: 20 }}>
                 <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', letterSpacing: '0.15em', marginBottom: 10 }}>USE CASES</div>
@@ -327,7 +418,13 @@ export default function NanopayPage() {
           <div className="panel">
             <div className="panel-header">
               <div className="panel-title">TRANSACTION HISTORY</div>
-              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{transactions.length} TXS</span>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{transactions.length} TXS</span>
+                <a href={`https://testnet.arcscan.app/address/${CONTRACTS.ArcNanopayRegistry}`} target="_blank" rel="noopener noreferrer"
+                  style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', textDecoration: 'none' }}>
+                  CONTRACT ↗
+                </a>
+              </div>
             </div>
             {transactions.length === 0 ? (
               <div style={{ padding: 48, textAlign: 'center', fontFamily: 'Space Mono, monospace', fontSize: 12, color: 'rgba(232,240,232,0.25)' }}>
