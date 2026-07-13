@@ -27,11 +27,13 @@ function shortId() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+const MY_WALLET = '0xf2ee634847d39161ec7de7879d7d0d241b932ad4';
+
 export default function PayrollPage() {
   const { address, connect } = useWallet();
   const [employees, setEmployees] = useState<Employee[]>([
-    { id: shortId(), name: 'Alice Johnson', wallet: '0x1234567890abcdef1234567890abcdef12345678', salary: 3000, currency: 'USD', status: 'pending' },
-    { id: shortId(), name: 'Bob Smith', wallet: '0xabcdef1234567890abcdef1234567890abcdef12', salary: 2500, currency: 'USD', status: 'pending' },
+    { id: shortId(), name: 'Alice Johnson', wallet: MY_WALLET, salary: 3000, currency: 'USD', status: 'pending' },
+    { id: shortId(), name: 'Bob Smith', wallet: MY_WALLET, salary: 2500, currency: 'USD', status: 'pending' },
   ]);
   const [history, setHistory] = useState<PayrollRun[]>([]);
   const [paying, setPaying] = useState(false);
