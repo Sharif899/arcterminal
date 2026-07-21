@@ -4,8 +4,8 @@ import Nav from '@/components/Nav';
 import { WalletProvider } from '@/context/WalletContext';
 
 export const metadata: Metadata = {
-  title: 'Arc Terminal — DeFi Trading Dashboard',
-  description: 'Send, Swap, Bridge USDC & EURC on Arc Network. Professional trading dashboard powered by Arc SDK.',
+  title: 'Fluxa — Autonomous Stablecoin Agent',
+  description: 'AI-powered autonomous agent that sends, swaps, and bridges USDC on Arc Network based on real market signals. Built for the Agentic Economy.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +13,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body>
         <WalletProvider>

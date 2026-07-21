@@ -17,23 +17,23 @@ export default function NetworkTicker() {
   }, []);
 
   const items = [
-    { label: 'BLOCK', value: stats ? `#${stats.blockNumber.toLocaleString()}` : '—', color: '#00ff88' },
-    { label: 'GAS', value: stats ? `$${stats.gasPrice} USDC` : '—', color: '#00aaff' },
-    { label: 'FINALITY', value: '~0.5s', color: '#00ff88' },
-    { label: 'CHAIN', value: '5042002 · ARC TESTNET', color: '#ffaa00' },
-    { label: 'USDC', value: '≈ $1.00', color: '#00ff88' },
-    { label: 'EURC', value: '≈ $1.09', color: '#00aaff' },
-    { label: 'EVM', value: 'COMPATIBLE', color: '#aa55ff' },
-    { label: 'STATUS', value: '● LIVE', color: '#00ff88' },
+    { label: 'BLOCK', value: stats ? `#${stats.blockNumber.toLocaleString()}` : '—', color: '#16a34a' },
+    { label: 'GAS', value: stats ? `$${stats.gasPrice} USDC` : '—', color: '#2563eb' },
+    { label: 'FINALITY', value: '~0.5s', color: '#16a34a' },
+    { label: 'CHAIN', value: '5042002 · ARC TESTNET', color: '#d97706' },
+    { label: 'USDC', value: '≈ $1.00', color: '#16a34a' },
+    { label: 'EURC', value: '≈ $1.09', color: '#2563eb' },
+    { label: 'EVM', value: 'COMPATIBLE', color: '#7c3aed' },
+    { label: 'STATUS', value: '● LIVE', color: '#16a34a' },
   ];
 
-  const repeated = [...items, ...items]; // duplicate for seamless scroll
+  const repeated = [...items, ...items];
 
   return (
     <div style={{
       height: 28,
-      borderBottom: '1px solid rgba(0,255,136,0.08)',
-      background: 'rgba(0,255,136,0.03)',
+      borderBottom: '1px solid #e2e6ed',
+      background: '#f8f9fb',
       overflow: 'hidden',
       display: 'flex',
       alignItems: 'center',
@@ -47,9 +47,9 @@ export default function NetworkTicker() {
       }}>
         {repeated.map((item, i) => (
           <div key={i} className="ticker-item" style={{ color: item.color }}>
-            <span style={{ color: 'rgba(232,240,232,0.3)', fontSize: 10, letterSpacing: '0.1em' }}>{item.label}</span>
+            <span style={{ color: '#9199aa', fontSize: 10, letterSpacing: '0.1em' }}>{item.label}</span>
             <span style={{ fontWeight: 700, fontSize: 11 }}>{item.value}</span>
-            <span style={{ color: 'rgba(232,240,232,0.15)', marginLeft: 10 }}>|</span>
+            <span style={{ color: '#e2e6ed', marginLeft: 10 }}>|</span>
           </div>
         ))}
       </div>
@@ -57,10 +57,10 @@ export default function NetworkTicker() {
       {/* Right: clock */}
       <div style={{
         position: 'absolute', right: 0,
-        background: 'linear-gradient(to left, #040608 60%, transparent)',
+        background: 'linear-gradient(to left, #f8f9fb 60%, transparent)',
         paddingLeft: 40, paddingRight: 16,
         fontFamily: 'Space Mono, monospace',
-        fontSize: 10, color: 'rgba(232,240,232,0.3)',
+        fontSize: 10, color: '#9199aa',
         letterSpacing: '0.08em',
       }}>
         {time}

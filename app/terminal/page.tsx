@@ -72,25 +72,35 @@ function TerminalContent() {
   }
 
   const tabs: { id: Tab; label: string; color: string }[] = [
-    { id: 'send', label: 'SEND', color: '#00ff88' },
-    { id: 'swap', label: 'SWAP', color: '#00aaff' },
-    { id: 'bridge', label: 'BRIDGE', color: '#ffaa00' },
+    { id: 'send', label: 'SEND', color: '#16a34a' },
+    { id: 'swap', label: 'SWAP', color: '#2563eb' },
+    { id: 'bridge', label: 'BRIDGE', color: '#d97706' },
   ];
 
   const displayBalances = balances || { usdc: '0.00', eurc: '0.00' };
 
   return (
     <div className="wrap" style={{ padding: '32px 24px' }}>
+      <div style={{ marginBottom: 20 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 4 }}>
+          Agent Actions
+        </h1>
+        <p style={{ fontSize: 14, color: '#5a6478' }}>
+          Execute stablecoin operations on Arc Network. Every action is logged automatically.
+        </p>
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, alignItems: 'start' }}>
         <div>
+          {/* Balance bar */}
           <div className="panel" style={{ marginBottom: 16, padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: 32 }}>
               {[
-                { label: 'USDC BALANCE', value: `$${displayBalances.usdc}`, color: '#00ff88' },
-                { label: 'EURC BALANCE', value: `€${displayBalances.eurc}`, color: '#00aaff' },
+                { label: 'USDC BALANCE', value: `$${displayBalances.usdc}`, color: '#16a34a' },
+                { label: 'EURC BALANCE', value: `€${displayBalances.eurc}`, color: '#2563eb' },
               ].map(b => (
                 <div key={b.label}>
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.1em', marginBottom: 3 }}>{b.label}</div>
+                  <div style={{ fontSize: 9, color: '#9199aa', letterSpacing: '0.1em', marginBottom: 3, fontWeight: 600, textTransform: 'uppercase' }}>{b.label}</div>
                   <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 20, fontWeight: 700, color: b.color }}>{b.value}</div>
                 </div>
               ))}
@@ -99,38 +109,40 @@ function TerminalContent() {
               {address ? (
                 <>
                   <button className="btn btn-ghost" onClick={refreshBalances} style={{ fontSize: 11, padding: '6px 14px' }}>↻ REFRESH</button>
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00ff88', padding: '6px 12px', borderRadius: 6, background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.2)' }}>
+                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#16a34a', padding: '6px 12px', borderRadius: 6, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                     {address.slice(0, 6)}…{address.slice(-4)}
                   </div>
                 </>
               ) : (
-                <button className="btn btn-green" onClick={connect} style={{ fontSize: 11 }}>🦊 CONNECT</button>
+                <button className="btn btn-primary" onClick={connect} style={{ fontSize: 11 }}>🦊 CONNECT</button>
               )}
             </div>
           </div>
 
+          {/* Tabs */}
           <div className="panel" style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #e2e6ed' }}>
               {tabs.map(t => (
                 <button key={t.id} onClick={() => { setTab(t.id); setResult(null); setError(''); }}
-                  style={{ flex: 1, padding: '14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em', color: tab === t.id ? t.color : 'rgba(232,240,232,0.3)', borderBottom: tab === t.id ? `2px solid ${t.color}` : '2px solid transparent', transition: 'all 0.15s' }}>
+                  style={{ flex: 1, padding: '14px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', color: tab === t.id ? t.color : '#9199aa', borderBottom: tab === t.id ? `2px solid ${t.color}` : '2px solid transparent', transition: 'all 0.15s' }}>
                   {t.label}
                 </button>
               ))}
             </div>
 
             <div style={{ padding: 24 }}>
+              {/* SEND */}
               {tab === 'send' && (
                 <div className="animate-fade-in">
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 20, lineHeight: 1.6 }}>
-                    Transfer USDC or EURC to any Arc wallet. Settles in under 1 second.
+                  <div style={{ fontSize: 13, color: '#5a6478', marginBottom: 20, lineHeight: 1.6 }}>
+                    Agent sends USDC or EURC to any Arc wallet. Settles in under 1 second.
                   </div>
                   <div style={{ marginBottom: 16 }}>
                     <label className="label">TOKEN</label>
                     <div style={{ display: 'flex', gap: 8 }}>
                       {(['USDC', 'EURC'] as const).map(t => (
                         <button key={t} onClick={() => setSendToken(t)}
-                          style={{ flex: 1, padding: '10px', borderRadius: 6, border: sendToken === t ? `1px solid ${t === 'USDC' ? '#00ff88' : '#00aaff'}` : '1px solid rgba(255,255,255,0.07)', background: sendToken === t ? (t === 'USDC' ? 'rgba(0,255,136,0.08)' : 'rgba(0,170,255,0.08)') : 'transparent', color: sendToken === t ? (t === 'USDC' ? '#00ff88' : '#00aaff') : 'rgba(232,240,232,0.4)', fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s' }}>
+                          style={{ flex: 1, padding: '10px', borderRadius: 8, border: sendToken === t ? `1px solid ${t === 'USDC' ? '#bbf7d0' : '#bfdbfe'}` : '1px solid #e2e6ed', background: sendToken === t ? (t === 'USDC' ? '#f0fdf4' : '#eff4ff') : '#f8f9fb', color: sendToken === t ? (t === 'USDC' ? '#16a34a' : '#2563eb') : '#9199aa', fontWeight: 700, fontSize: 13, cursor: 'pointer', transition: 'all 0.15s' }}>
                           {t}
                         </button>
                       ))}
@@ -150,10 +162,11 @@ function TerminalContent() {
                 </div>
               )}
 
+              {/* SWAP */}
               {tab === 'swap' && (
                 <div className="animate-fade-in">
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 20, lineHeight: 1.6 }}>
-                    Swap USDC↔EURC on Arc — powered by Circle.
+                  <div style={{ fontSize: 13, color: '#5a6478', marginBottom: 20, lineHeight: 1.6 }}>
+                    Agent swaps USDC↔EURC on Arc — powered by Circle.
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 10, alignItems: 'end', marginBottom: 16 }}>
                     <div>
@@ -163,10 +176,10 @@ function TerminalContent() {
                         <option value="EURC">EURC</option>
                       </select>
                     </div>
-                    <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 18, color: '#00aaff', paddingBottom: 2 }}>⇄</div>
+                    <div style={{ fontSize: 18, color: '#2563eb', paddingBottom: 2 }}>⇄</div>
                     <div>
                       <label className="label">TO</label>
-                      <div className="input" style={{ color: '#00aaff', display: 'flex', alignItems: 'center' }}>{swapOut}</div>
+                      <div className="input" style={{ color: '#2563eb', display: 'flex', alignItems: 'center' }}>{swapOut}</div>
                     </div>
                   </div>
                   <div style={{ marginBottom: 20 }}>
@@ -174,15 +187,16 @@ function TerminalContent() {
                     <input className="input" type="number" value={swapAmount} onChange={e => setSwapAmount(e.target.value)} placeholder="1.00" />
                   </div>
                   <button className="btn btn-blue" style={{ width: '100%', fontSize: 13, padding: '13px' }} onClick={handleSwap} disabled={loading}>
-                    {loading ? <><span className="spinner" style={{ borderTopColor: '#00aaff' }} /> SWAPPING…</> : `🔄 SWAP ${swapAmount || '0'} ${swapIn} → ${swapOut}`}
+                    {loading ? <><span className="spinner" /> SWAPPING…</> : `🔄 SWAP ${swapAmount || '0'} ${swapIn} → ${swapOut}`}
                   </button>
                 </div>
               )}
 
+              {/* BRIDGE */}
               {tab === 'bridge' && (
                 <div className="animate-fade-in">
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 20, lineHeight: 1.6 }}>
-                    Bridge USDC cross-chain via Circle CCTP. Native USDC — no wrapped tokens.
+                  <div style={{ fontSize: 13, color: '#5a6478', marginBottom: 20, lineHeight: 1.6 }}>
+                    Agent bridges USDC cross-chain via Circle CCTP. Native USDC — no wrapped tokens.
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 10, alignItems: 'end', marginBottom: 16 }}>
                     <div>
@@ -191,7 +205,7 @@ function TerminalContent() {
                         {BRIDGE_CHAINS.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label}</option>)}
                       </select>
                     </div>
-                    <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 16, color: '#ffaa00', paddingBottom: 2 }}>→</div>
+                    <div style={{ fontSize: 16, color: '#d97706', paddingBottom: 2 }}>→</div>
                     <div>
                       <label className="label">TO CHAIN</label>
                       <select className="select" value={bridgeTo} onChange={e => setBridgeTo(e.target.value)}>
@@ -207,28 +221,30 @@ function TerminalContent() {
                     <label className="label">RECIPIENT ADDRESS</label>
                     <input className="input" value={bridgeRecipient} onChange={e => setBridgeRecipient(e.target.value)} placeholder="0x…" />
                   </div>
-                  <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 6, background: 'rgba(255,170,0,0.06)', border: '1px solid rgba(255,170,0,0.15)', fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.4)', lineHeight: 1.5 }}>
+                  <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 12, color: '#92400e', lineHeight: 1.5 }}>
                     ⚠ Bridge uses CCTP attestation — may take 10–20 seconds for cross-chain confirmation
                   </div>
                   <button className="btn btn-amber" style={{ width: '100%', fontSize: 13, padding: '13px' }} onClick={handleBridge} disabled={loading}>
-                    {loading ? <><span className="spinner" style={{ borderTopColor: '#ffaa00' }} /> BRIDGING…</> : `🌉 BRIDGE ${bridgeAmount || '0'} USDC`}
+                    {loading ? <><span className="spinner" /> BRIDGING…</> : `🌉 BRIDGE ${bridgeAmount || '0'} USDC`}
                   </button>
                 </div>
               )}
 
+              {/* Error */}
               {error && (
-                <div className="animate-fade-in" style={{ marginTop: 16, padding: '12px 16px', borderRadius: 6, background: 'rgba(255,51,85,0.08)', border: '1px solid rgba(255,51,85,0.2)', fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#ff3355' }}>
+                <div className="animate-fade-in" style={{ marginTop: 16, padding: '12px 16px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#dc2626' }}>
                   ✗ {error}
                 </div>
               )}
 
+              {/* Success */}
               {result && (
-                <div className="animate-fade-in" style={{ marginTop: 16, padding: '16px', borderRadius: 6, background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.25)' }}>
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00ff88', fontWeight: 700, marginBottom: 8 }}>✓ TRANSACTION CONFIRMED</div>
-                  <div style={{ fontSize: 11, color: 'rgba(232,240,232,0.4)', marginBottom: 6, fontFamily: 'Space Mono, monospace' }}>
+                <div className="animate-fade-in" style={{ marginTop: 16, padding: '16px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                  <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 700, marginBottom: 8 }}>✓ TRANSACTION CONFIRMED</div>
+                  <div style={{ fontSize: 12, color: '#5a6478', marginBottom: 6 }}>
                     {result.amount} {result.token} · Arc Network · &lt;1s settlement
                   </div>
-                  <a href={result.explorerUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00aaff' }}>
+                  <a href={result.explorerUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#2563eb' }}>
                     ↗ {result.txHash.slice(0, 28)}…
                   </a>
                 </div>
@@ -237,6 +253,7 @@ function TerminalContent() {
           </div>
         </div>
 
+        {/* Sidebar */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="panel">
             <div className="panel-header">
@@ -244,18 +261,38 @@ function TerminalContent() {
             </div>
             <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[
-                { href: '/portfolio', label: '📊 View Portfolio', color: '#aa55ff' },
-                { href: '/history', label: '📜 Transaction History', color: '#00ddff' },
-                { href: '/markets', label: '📈 Market Stats', color: '#ff3355' },
-                { href: 'https://faucet.circle.com', label: '💧 Get Testnet USDC', color: '#ffaa00' },
-                { href: 'https://testnet.arcscan.app', label: '🔍 Arcscan Explorer', color: '#00aaff' },
+                { href: '/portfolio', label: '📊 Agent Wallet', color: '#7c3aed' },
+                { href: '/history', label: '📜 Agent Log', color: '#0891b2' },
+                { href: '/markets', label: '📈 Market Signals', color: '#dc2626' },
+                { href: 'https://faucet.circle.com', label: '💧 Get Testnet USDC', color: '#d97706' },
+                { href: 'https://testnet.arcscan.app', label: '🔍 Arcscan Explorer', color: '#2563eb' },
               ].map(l => (
-                <a key={l.label} href={l.href} target={l.href.startsWith('http') ? '_blank' : '_self'} rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', fontFamily: 'Space Mono, monospace', fontSize: 11, color: l.color, textDecoration: 'none', transition: 'all 0.15s' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.05)'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.02)'; }}>
+                <a key={l.label} href={l.href}
+                  target={l.href.startsWith('http') ? '_blank' : '_self'}
+                  rel="noopener noreferrer"
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', borderRadius: 8, background: '#f8f9fb', border: '1px solid #e2e6ed', fontSize: 12, color: l.color, textDecoration: 'none', fontWeight: 500, transition: 'all 0.15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#f1f3f7'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#f8f9fb'; }}>
                   {l.label}
                 </a>
+              ))}
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-header">
+              <div className="panel-title">AGENT STATUS</div>
+            </div>
+            <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { label: 'Network', value: 'Arc Testnet' },
+                { label: 'Mode', value: 'Manual + Rules' },
+                { label: 'Status', value: '● Online' },
+              ].map(r => (
+                <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ color: '#9199aa' }}>{r.label}</span>
+                  <span style={{ fontWeight: 600, color: r.label === 'Status' ? '#16a34a' : '#0f1117' }}>{r.value}</span>
+                </div>
               ))}
             </div>
           </div>
@@ -267,7 +304,7 @@ function TerminalContent() {
 
 export default function TerminalPage() {
   return (
-    <Suspense fallback={<div className="wrap" style={{ padding: '32px 24px', color: 'rgba(232,240,232,0.4)', fontFamily: 'Space Mono, monospace' }}>Loading terminal…</div>}>
+    <Suspense fallback={<div className="wrap" style={{ padding: '32px 24px', color: '#9199aa', fontSize: 13 }}>Loading agent…</div>}>
       <TerminalContent />
     </Suspense>
   );
