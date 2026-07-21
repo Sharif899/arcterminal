@@ -29,6 +29,19 @@ function shortId() {
 
 const MY_WALLET = '0xf2ee634847d39161ec7de7879d7d0d241b932ad4';
 
+// Core text tones tuned for a WHITE page background
+const TEXT = {
+  faint:  'rgba(15,26,20,0.45)',
+  muted:  'rgba(15,26,20,0.62)',
+  strong: '#0d1f16',
+};
+const GREEN = '#059669';
+const GREEN_BG = 'rgba(5,150,105,0.08)';
+const GREEN_BORDER = 'rgba(5,150,105,0.28)';
+const BLUE = '#0284c7';
+const AMBER = '#b45f06';
+const RED = '#dc2626';
+
 export default function PayrollPage() {
   const { address, connect } = useWallet();
   const [employees, setEmployees] = useState<Employee[]>([
@@ -132,146 +145,175 @@ export default function PayrollPage() {
   }
 
   return (
-    <div style={{ padding: '24px 24px 60px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · PAYROLL</div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>Payroll</h1>
-          <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)' }}>Add employees, set salaries, pay everyone in one click via Arc SDK</p>
-        </div>
-        {!address
-          ? <button onClick={connect} className="btn btn-green" style={{ fontSize: 12 }}>🦊 CONNECT WALLET</button>
-          : <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#00ff88', padding: '8px 14px', borderRadius: 6, background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.2)' }}>{address.slice(0, 6)}…{address.slice(-4)}</div>
+    <>
+      <style>{`
+        .payroll-page { padding: 24px 24px 60px; max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
+        .payroll-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+        .payroll-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+        .payroll-main { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+        .add-emp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .emp-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+        .emp-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .pay-actions-row { display: flex; gap: 10px; }
+        @media (max-width: 900px) {
+          .payroll-main { grid-template-columns: 1fr; }
         }
-      </div>
+        @media (max-width: 640px) {
+          .payroll-stats { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 480px) {
+          .payroll-page { padding: 16px 16px 60px !important; }
+          .payroll-page h1 { font-size: 22px !important; }
+          .payroll-header { flex-direction: column; align-items: stretch; }
+          .payroll-header .btn, .payroll-header > div:last-child { width: 100%; text-align: center; }
+          .add-emp-grid { grid-template-columns: 1fr; }
+          .emp-row { flex-direction: column; }
+          .emp-actions { width: 100%; justify-content: space-between; }
+          .pay-actions-row { flex-direction: column; }
+        }
+      `}</style>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
-        {[
-          { label: 'TOTAL EMPLOYEES', value: employees.length, color: '#00aaff' },
-          { label: 'TOTAL PAYROLL', value: `$${totalPayroll.toLocaleString()} USDC`, color: '#00ff88' },
-          { label: 'PAID THIS RUN', value: employees.filter(e => e.status === 'paid').length, color: '#00ff88' },
-          { label: 'NETWORK FEE', value: `~$${(employees.length * 0.01).toFixed(2)}`, color: '#ffaa00' },
-        ].map(s => (
-          <div key={s.label} className="panel" style={{ padding: 16 }}>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.15em', marginBottom: 6 }}>{s.label}</div>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 18, color: s.color }}>{s.value}</div>
+      <div className="payroll-page">
+        <div className="payroll-header">
+          <div>
+            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: TEXT.faint, letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · PAYROLL</div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: TEXT.strong, letterSpacing: '-0.02em', marginBottom: 4 }}>Payroll</h1>
+            <p style={{ fontSize: 13, color: TEXT.muted }}>Add employees, set salaries, pay everyone in one click via Arc SDK</p>
           </div>
-        ))}
-      </div>
-
-      {error && (
-        <div style={{ background: 'rgba(255,51,85,0.08)', border: '1px solid rgba(255,51,85,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#ff3355' }}>
-          ⚠ {error}
+          {!address
+            ? <button onClick={connect} className="btn btn-green" style={{ fontSize: 12 }}>🦊 CONNECT WALLET</button>
+            : <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: GREEN, padding: '8px 14px', borderRadius: 6, background: GREEN_BG, border: `1px solid ${GREEN_BORDER}` }}>{address.slice(0, 6)}…{address.slice(-4)}</div>
+          }
         </div>
-      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="panel">
-            <div className="panel-header">
-              <div className="panel-title">EMPLOYEES ({employees.length})</div>
-              <button onClick={() => setShowAddForm(!showAddForm)} className="btn btn-green" style={{ fontSize: 11, padding: '6px 14px' }}>
-                {showAddForm ? '✕ CANCEL' : '+ ADD EMPLOYEE'}
-              </button>
+        <div className="payroll-stats">
+          {[
+            { label: 'TOTAL EMPLOYEES', value: employees.length, color: BLUE },
+            { label: 'TOTAL PAYROLL', value: `$${totalPayroll.toLocaleString()} USDC`, color: GREEN },
+            { label: 'PAID THIS RUN', value: employees.filter(e => e.status === 'paid').length, color: GREEN },
+            { label: 'NETWORK FEE', value: `~$${(employees.length * 0.01).toFixed(2)}`, color: AMBER },
+          ].map(s => (
+            <div key={s.label} className="panel" style={{ padding: 16 }}>
+              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: TEXT.faint, letterSpacing: '0.15em', marginBottom: 6 }}>{s.label}</div>
+              <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 18, color: s.color }}>{s.value}</div>
             </div>
-            {showAddForm && (
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,255,136,0.02)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                  <div><label className="label">FULL NAME</label><input className="input" placeholder="Alice Johnson" value={newEmployee.name} onChange={e => setNewEmployee(p => ({ ...p, name: e.target.value }))} /></div>
-                  <div><label className="label">SALARY (USDC/month)</label><input className="input" type="number" placeholder="3000" value={newEmployee.salary} onChange={e => setNewEmployee(p => ({ ...p, salary: e.target.value }))} /></div>
-                </div>
-                <div style={{ marginBottom: 12 }}><label className="label">WALLET ADDRESS (ARC)</label><input className="input" placeholder="0x..." value={newEmployee.wallet} onChange={e => setNewEmployee(p => ({ ...p, wallet: e.target.value }))} /></div>
-                {addError && <div style={{ color: '#ff3355', fontFamily: 'Space Mono, monospace', fontSize: 11, marginBottom: 10 }}>⚠ {addError}</div>}
-                <button onClick={addEmployee} className="btn btn-green" style={{ fontSize: 12 }}>ADD EMPLOYEE</button>
+          ))}
+        </div>
+
+        {error && (
+          <div style={{ background: 'rgba(220,38,38,0.06)', border: `1px solid rgba(220,38,38,0.25)`, borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontFamily: 'Space Mono, monospace', fontSize: 12, color: RED }}>
+            ⚠ {error}
+          </div>
+        )}
+
+        <div className="payroll-main">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="panel">
+              <div className="panel-header">
+                <div className="panel-title">EMPLOYEES ({employees.length})</div>
+                <button onClick={() => setShowAddForm(!showAddForm)} className="btn btn-green" style={{ fontSize: 11, padding: '6px 14px' }}>
+                  {showAddForm ? '✕ CANCEL' : '+ ADD EMPLOYEE'}
+                </button>
               </div>
-            )}
-            <div>
-              {employees.length === 0 && (
-                <div style={{ padding: 32, textAlign: 'center', color: 'rgba(232,240,232,0.3)', fontFamily: 'Space Mono, monospace', fontSize: 12 }}>No employees yet. Add one above.</div>
+              {showAddForm && (
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(15,26,20,0.08)', background: GREEN_BG }}>
+                  <div className="add-emp-grid">
+                    <div><label className="label">FULL NAME</label><input className="input" placeholder="Alice Johnson" value={newEmployee.name} onChange={e => setNewEmployee(p => ({ ...p, name: e.target.value }))} /></div>
+                    <div><label className="label">SALARY (USDC/month)</label><input className="input" type="number" placeholder="3000" value={newEmployee.salary} onChange={e => setNewEmployee(p => ({ ...p, salary: e.target.value }))} /></div>
+                  </div>
+                  <div style={{ marginBottom: 12 }}><label className="label">WALLET ADDRESS (ARC)</label><input className="input" placeholder="0x..." value={newEmployee.wallet} onChange={e => setNewEmployee(p => ({ ...p, wallet: e.target.value }))} /></div>
+                  {addError && <div style={{ color: RED, fontFamily: 'Space Mono, monospace', fontSize: 11, marginBottom: 10 }}>⚠ {addError}</div>}
+                  <button onClick={addEmployee} className="btn btn-green" style={{ fontSize: 12 }}>ADD EMPLOYEE</button>
+                </div>
               )}
-              {employees.map(emp => (
-                <div key={emp.id} style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: emp.status === 'paid' ? 'rgba(0,255,136,0.03)' : emp.status === 'failed' ? 'rgba(255,51,85,0.03)' : 'transparent', transition: 'all 0.3s' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                        <span style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: '#e8f0e8' }}>{emp.name}</span>
-                        {emp.status === 'paid' && <span className="badge badge-green" style={{ fontSize: 9 }}>PAID</span>}
-                        {emp.status === 'failed' && <span className="badge badge-red" style={{ fontSize: 9 }}>FAILED</span>}
-                        {payingId === emp.id && <span className="spinner" />}
+              <div>
+                {employees.length === 0 && (
+                  <div style={{ padding: 32, textAlign: 'center', color: TEXT.faint, fontFamily: 'Space Mono, monospace', fontSize: 12 }}>No employees yet. Add one above.</div>
+                )}
+                {employees.map(emp => (
+                  <div key={emp.id} style={{ padding: '14px 20px', borderBottom: '1px solid rgba(15,26,20,0.06)', background: emp.status === 'paid' ? 'rgba(5,150,105,0.05)' : emp.status === 'failed' ? 'rgba(220,38,38,0.05)' : 'transparent', transition: 'all 0.3s' }}>
+                    <div className="emp-row">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: TEXT.strong }}>{emp.name}</span>
+                          {emp.status === 'paid' && <span className="badge badge-green" style={{ fontSize: 9 }}>PAID</span>}
+                          {emp.status === 'failed' && <span className="badge badge-red" style={{ fontSize: 9 }}>FAILED</span>}
+                          {payingId === emp.id && <span className="spinner" />}
+                        </div>
+                        <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: TEXT.faint, marginBottom: emp.txHash ? 4 : 0 }}>{emp.wallet.slice(0, 12)}...{emp.wallet.slice(-8)}</div>
+                        {emp.txHash && emp.explorerUrl && (
+                          <a href={emp.explorerUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: GREEN, textDecoration: 'none' }}>{emp.txHash.slice(0, 16)}... ↗</a>
+                        )}
                       </div>
-                      <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: emp.txHash ? 4 : 0 }}>{emp.wallet.slice(0, 12)}...{emp.wallet.slice(-8)}</div>
-                      {emp.txHash && emp.explorerUrl && (
-                        <a href={emp.explorerUrl} target="_blank" rel="noopener noreferrer" style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00ff88', textDecoration: 'none' }}>{emp.txHash.slice(0, 16)}... ↗</a>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                      <span style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 14, color: '#00ff88' }}>${emp.salary.toLocaleString()} USDC</span>
-                      {emp.status === 'pending' && (
-                        <button onClick={() => paySingle(emp.id)} disabled={paying || payingId === emp.id} className="btn btn-blue" style={{ fontSize: 10, padding: '5px 10px' }}>
-                          {payingId === emp.id ? <span className="spinner" /> : 'PAY'}
-                        </button>
-                      )}
-                      {emp.status !== 'paid' && (
-                        <button onClick={() => removeEmployee(emp.id)} disabled={paying} style={{ background: 'none', border: 'none', color: 'rgba(232,240,232,0.3)', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>✕</button>
-                      )}
+                      <div className="emp-actions">
+                        <span style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 14, color: GREEN }}>${emp.salary.toLocaleString()} USDC</span>
+                        {emp.status === 'pending' && (
+                          <button onClick={() => paySingle(emp.id)} disabled={paying || payingId === emp.id} className="btn btn-blue" style={{ fontSize: 10, padding: '5px 10px' }}>
+                            {payingId === emp.id ? <span className="spinner" /> : 'PAY'}
+                          </button>
+                        )}
+                        {emp.status !== 'paid' && (
+                          <button onClick={() => removeEmployee(emp.id)} disabled={paying} style={{ background: 'none', border: 'none', color: TEXT.faint, cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>✕</button>
+                        )}
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+            <div className="pay-actions-row">
+              <button onClick={payAll} disabled={paying || pendingEmployees.length === 0} className="btn btn-green" style={{ flex: 1, fontSize: 13, padding: '14px' }}>
+                {paying ? <><span className="spinner" /> PAYING {employees.find(e => e.id === payingId)?.name || ''}...</> : `PAY ALL ${pendingEmployees.length} EMPLOYEES · $${pendingEmployees.reduce((s, e) => s + e.salary, 0).toLocaleString()} USDC`}
+              </button>
+              {runComplete && <button onClick={resetAll} className="btn btn-ghost" style={{ fontSize: 13, padding: '14px 20px' }}>RESET</button>}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div className="panel">
+              <div className="panel-header">
+                <div className="panel-title">PAYROLL HISTORY</div>
+                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: TEXT.faint }}>{history.length} RUNS</span>
+              </div>
+              {history.length === 0
+                ? <div style={{ padding: 24, textAlign: 'center', fontFamily: 'Space Mono, monospace', fontSize: 11, color: TEXT.faint }}>No runs yet</div>
+                : history.map(run => (
+                  <div key={run.id} style={{ padding: '14px 16px', borderBottom: '1px solid rgba(15,26,20,0.06)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: TEXT.strong }}>RUN #{run.id}</span>
+                      <span className={`badge ${run.status === 'complete' ? 'badge-green' : run.status === 'partial' ? 'badge-amber' : 'badge-red'}`} style={{ fontSize: 9 }}>{run.status.toUpperCase()}</span>
+                    </div>
+                    <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: TEXT.faint, marginBottom: 4 }}>{run.date}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: TEXT.muted }}>{run.employees.filter(e => e.status === 'paid').length}/{run.employees.length} paid</span>
+                      <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: GREEN }}>${run.totalUSDC.toLocaleString()} USDC</span>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+            <div className="panel" style={{ padding: 16 }}>
+              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: GREEN, letterSpacing: '0.15em', marginBottom: 10 }}>⚡ HOW IT WORKS</div>
+              {[
+                { label: 'Per payment fee', value: '~$0.01' },
+                { label: 'Settlement', value: '< 1 second' },
+                { label: 'Token', value: 'USDC' },
+                { label: 'Network', value: 'Arc Testnet' },
+                { label: 'Contract', value: 'ArcPayrollRegistry' },
+              ].map(i => (
+                <div key={i.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(15,26,20,0.06)' }}>
+                  <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: TEXT.faint }}>{i.label}</span>
+                  <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: TEXT.strong }}>{i.value}</span>
                 </div>
               ))}
+              <a href={`https://testnet.arcscan.app/address/${CONTRACTS.ArcPayrollRegistry}`} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'block', marginTop: 12, fontFamily: 'Space Mono, monospace', fontSize: 10, color: BLUE, textDecoration: 'none' }}>
+                VIEW CONTRACT ON ARCSCAN ↗
+              </a>
             </div>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={payAll} disabled={paying || pendingEmployees.length === 0} className="btn btn-green" style={{ flex: 1, fontSize: 13, padding: '14px' }}>
-              {paying ? <><span className="spinner" /> PAYING {employees.find(e => e.id === payingId)?.name || ''}...</> : `PAY ALL ${pendingEmployees.length} EMPLOYEES · $${pendingEmployees.reduce((s, e) => s + e.salary, 0).toLocaleString()} USDC`}
-            </button>
-            {runComplete && <button onClick={resetAll} className="btn btn-ghost" style={{ fontSize: 13, padding: '14px 20px' }}>RESET</button>}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="panel">
-            <div className="panel-header">
-              <div className="panel-title">PAYROLL HISTORY</div>
-              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{history.length} RUNS</span>
-            </div>
-            {history.length === 0
-              ? <div style={{ padding: 24, textAlign: 'center', fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.25)' }}>No runs yet</div>
-              : history.map(run => (
-                <div key={run.id} style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: '#e8f0e8' }}>RUN #{run.id}</span>
-                    <span className={`badge ${run.status === 'complete' ? 'badge-green' : run.status === 'partial' ? 'badge-amber' : 'badge-red'}`} style={{ fontSize: 9 }}>{run.status.toUpperCase()}</span>
-                  </div>
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', marginBottom: 4 }}>{run.date}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.5)' }}>{run.employees.filter(e => e.status === 'paid').length}/{run.employees.length} paid</span>
-                    <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: '#00ff88' }}>${run.totalUSDC.toLocaleString()} USDC</span>
-                  </div>
-                </div>
-              ))
-            }
-          </div>
-          <div className="panel" style={{ padding: 16 }}>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00ff88', letterSpacing: '0.15em', marginBottom: 10 }}>⚡ HOW IT WORKS</div>
-            {[
-              { label: 'Per payment fee', value: '~$0.01' },
-              { label: 'Settlement', value: '< 1 second' },
-              { label: 'Token', value: 'USDC' },
-              { label: 'Network', value: 'Arc Testnet' },
-              { label: 'Contract', value: 'ArcPayrollRegistry' },
-            ].map(i => (
-              <div key={i.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{i.label}</span>
-                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700, color: '#e8f0e8' }}>{i.value}</span>
-              </div>
-            ))}
-            <a href={`https://testnet.arcscan.app/address/${CONTRACTS.ArcPayrollRegistry}`} target="_blank" rel="noopener noreferrer"
-              style={{ display: 'block', marginTop: 12, fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#00aaff', textDecoration: 'none' }}>
-              VIEW CONTRACT ON ARCSCAN ↗
-            </a>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

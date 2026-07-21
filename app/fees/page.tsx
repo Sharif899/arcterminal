@@ -19,12 +19,12 @@ interface FeeResult {
 }
 
 const PROVIDERS: Provider[] = [
-  { name: 'Arc Network', color: '#00ff88', logo: '⬡', type: 'Blockchain' },
-  { name: 'Western Union', color: '#ffaa00', logo: '💛', type: 'Wire Transfer' },
-  { name: 'PayPal', color: '#00aaff', logo: '🅿', type: 'Digital Wallet' },
-  { name: 'SWIFT', color: '#aa55ff', logo: '🏦', type: 'Bank Transfer' },
-  { name: 'Wise', color: '#00ddff', logo: '🌍', type: 'Fintech' },
-  { name: 'Remitly', color: '#ff3355', logo: '📱', type: 'Remittance' },
+  { name: 'Arc Network', color: '#059669', logo: '⬡', type: 'Blockchain' },
+  { name: 'Western Union', color: '#b45f06', logo: '💛', type: 'Wire Transfer' },
+  { name: 'PayPal', color: '#0284c7', logo: '🅿', type: 'Digital Wallet' },
+  { name: 'SWIFT', color: '#7c3aed', logo: '🏦', type: 'Bank Transfer' },
+  { name: 'Wise', color: '#0891b2', logo: '🌍', type: 'Fintech' },
+  { name: 'Remitly', color: '#dc2626', logo: '📱', type: 'Remittance' },
 ];
 
 const CORRIDORS = [
@@ -34,6 +34,16 @@ const CORRIDORS = [
   { from: 'USD', to: 'GBP', label: 'USD → GBP', flag: '🇬🇧' },
   { from: 'USD', to: 'EUR', label: 'USD → EUR', flag: '🇪🇺' },
 ];
+
+// Core text tones tuned for a WHITE page background
+const TEXT = {
+  faint:  'rgba(15,26,20,0.45)',
+  muted:  'rgba(15,26,20,0.62)',
+  strong: '#0d1f16',
+};
+const GREEN = '#059669';
+const RED = '#dc2626';
+const BLUE = '#0284c7';
 
 // Real-ish fee structures based on published rates
 function calculateFees(amount: number, corridor: string): FeeResult[] {
@@ -123,18 +133,18 @@ export default function FeesPage() {
         .fees-table { width: 100%; border-collapse: collapse; }
         .fees-table th {
           font-family: Space Mono, monospace; font-size: 10px;
-          color: rgba(232,240,232,0.3); letter-spacing: 0.15em;
+          color: rgba(15,26,20,0.45); letter-spacing: 0.15em;
           text-transform: uppercase; padding: 10px 16px;
-          text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06);
+          text-align: left; border-bottom: 1px solid rgba(15,26,20,0.1);
           white-space: nowrap;
         }
         .fees-table td {
-          padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04);
+          padding: 14px 16px; border-bottom: 1px solid rgba(15,26,20,0.06);
           font-size: 13px; transition: all 0.3s;
         }
-        .fees-table tr:hover td { background: rgba(255,255,255,0.02); }
+        .fees-table tr:hover td { background: rgba(15,26,20,0.02); }
         .fees-table tr:last-child td { border-bottom: none; }
-        .fees-table tr.arc-row td { background: rgba(0,255,136,0.04); }
+        .fees-table tr.arc-row td { background: rgba(5,150,105,0.06); }
         .stat-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
@@ -148,7 +158,7 @@ export default function FeesPage() {
           flex-wrap: wrap;
         }
         .controls-row > * { flex: 1; min-width: 160px; }
-        .bar-wrap { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+        .bar-wrap { height: 6px; background: rgba(15,26,20,0.08); border-radius: 3px; margin-top: 4px; overflow: hidden; }
         .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
         @media (max-width: 768px) {
           .stat-grid { grid-template-columns: repeat(2, 1fr); }
@@ -158,6 +168,8 @@ export default function FeesPage() {
         @media (max-width: 480px) {
           .stat-grid { grid-template-columns: repeat(2, 1fr); }
           .fees-page { padding: 16px 16px 60px !important; }
+          .fees-page h1 { font-size: 22px !important; }
+          .controls-row > * { min-width: 100%; }
         }
       `}</style>
 
@@ -165,9 +177,9 @@ export default function FeesPage() {
 
         {/* Header */}
         <div style={{ marginBottom: 28 }}>
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · FEE COMPARISON</div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>Fee Comparison</h1>
-          <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)' }}>Arc vs Western Union vs PayPal vs SWIFT — real fee structures, live calculation</p>
+          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: TEXT.faint, letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · FEE COMPARISON</div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: TEXT.strong, letterSpacing: '-0.02em', marginBottom: 4 }}>Fee Comparison</h1>
+          <p style={{ fontSize: 13, color: TEXT.muted }}>Arc vs Western Union vs PayPal vs SWIFT — real fee structures, live calculation</p>
         </div>
 
         {/* Controls */}
@@ -197,15 +209,15 @@ export default function FeesPage() {
         {/* Stats */}
         <div className="stat-grid">
           {[
-            { label: 'ARC FEE', value: `$${arcResult?.fee.toFixed(2) ?? '0.01'}`, color: '#00ff88', sub: 'flat rate' },
-            { label: 'MAX FEE (SWIFT)', value: `$${worst?.fee.toFixed(2) ?? '—'}`, color: '#ff3355', sub: 'most expensive' },
-            { label: 'YOU SAVE VS SWIFT', value: `$${savings}`, color: '#00ff88', sub: 'using Arc' },
-            { label: 'ARC SPEED', value: '< 1 sec', color: '#00aaff', sub: 'vs days for others' },
+            { label: 'ARC FEE', value: `$${arcResult?.fee.toFixed(2) ?? '0.01'}`, color: GREEN, sub: 'flat rate' },
+            { label: 'MAX FEE (SWIFT)', value: `$${worst?.fee.toFixed(2) ?? '—'}`, color: RED, sub: 'most expensive' },
+            { label: 'YOU SAVE VS SWIFT', value: `$${savings}`, color: GREEN, sub: 'using Arc' },
+            { label: 'ARC SPEED', value: '< 1 sec', color: BLUE, sub: 'vs days for others' },
           ].map(s => (
             <div key={s.label} className="panel" style={{ padding: 18 }}>
-              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.15em', marginBottom: 8 }}>{s.label}</div>
+              <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: TEXT.faint, letterSpacing: '0.15em', marginBottom: 8 }}>{s.label}</div>
               <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 22, color: s.color, marginBottom: 4 }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: 'rgba(232,240,232,0.3)' }}>{s.sub}</div>
+              <div style={{ fontSize: 11, color: TEXT.faint }}>{s.sub}</div>
             </div>
           ))}
         </div>
@@ -214,7 +226,7 @@ export default function FeesPage() {
         <div className="panel" style={{ marginBottom: 20 }}>
           <div className="panel-header">
             <div className="panel-title">FEE VISUAL COMPARISON</div>
-            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>sending ${amount || 500}</span>
+            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: TEXT.faint }}>sending ${amount || 500}</span>
           </div>
           <div style={{ padding: '16px 20px' }}>
             {results.map((r, i) => {
@@ -223,19 +235,19 @@ export default function FeesPage() {
               const pct = Math.max((r.fee / maxFee) * 100, 1);
               return (
                 <div key={r.provider} style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 16 }}>{provider?.logo}</span>
                       <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: provider?.color }}>{r.provider}</span>
                       {r.provider === 'Arc Network' && <span className="badge badge-green" style={{ fontSize: 9 }}>CHEAPEST</span>}
                     </div>
                     <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                      <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: 'rgba(232,240,232,0.5)' }}>{r.speed}</span>
+                      <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: TEXT.muted }}>{r.speed}</span>
                       <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 13, fontWeight: 700, color: provider?.color }}>${r.fee.toFixed(2)}</span>
                     </div>
                   </div>
                   <div className="bar-wrap">
-                    <div className="bar-fill" style={{ width: animating ? '0%' : `${pct}%`, background: provider?.color, opacity: 0.7 }} />
+                    <div className="bar-fill" style={{ width: animating ? '0%' : `${pct}%`, background: provider?.color, opacity: 0.85 }} />
                   </div>
                 </div>
               );
@@ -247,7 +259,7 @@ export default function FeesPage() {
         <div className="panel">
           <div className="panel-header">
             <div className="panel-title">DETAILED BREAKDOWN</div>
-            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>
+            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: TEXT.faint }}>
               SENDING ${parseFloat(amount || '500').toLocaleString()} · {corridor}
             </span>
           </div>
@@ -275,23 +287,23 @@ export default function FeesPage() {
                           <span style={{ fontSize: 18 }}>{provider?.logo}</span>
                           <div>
                             <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 12, color: provider?.color }}>{r.provider}</div>
-                            <div style={{ fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{provider?.type}</div>
+                            <div style={{ fontSize: 10, color: TEXT.faint }}>{provider?.type}</div>
                           </div>
                         </div>
                       </td>
-                      <td style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 14, color: isArc ? '#00ff88' : '#e8f0e8' }}>
+                      <td style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 14, color: isArc ? GREEN : TEXT.strong }}>
                         ${r.fee.toFixed(2)}
                       </td>
-                      <td style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: isArc ? '#00ff88' : 'rgba(232,240,232,0.6)' }}>
+                      <td style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: isArc ? GREEN : TEXT.muted }}>
                         {r.feePercent.toFixed(2)}%
                       </td>
-                      <td className="hide-mobile" style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: 'rgba(232,240,232,0.6)' }}>
+                      <td className="hide-mobile" style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: TEXT.muted }}>
                         {r.exchangeRate.toFixed(3)}x
                       </td>
-                      <td style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: isArc ? '#00ff88' : '#e8f0e8' }}>
+                      <td style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: isArc ? GREEN : TEXT.strong }}>
                         ${r.recipientGets.toFixed(2)}
                       </td>
-                      <td className="hide-mobile" style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: isArc ? '#00ff88' : 'rgba(232,240,232,0.5)' }}>
+                      <td className="hide-mobile" style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: isArc ? GREEN : TEXT.muted }}>
                         {r.speed}
                       </td>
                       <td>
@@ -310,7 +322,7 @@ export default function FeesPage() {
           </div>
         </div>
 
-        <div style={{ marginTop: 16, fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.2)', textAlign: 'center' }}>
+        <div style={{ marginTop: 16, fontFamily: 'Space Mono, monospace', fontSize: 10, color: TEXT.faint, textAlign: 'center' }}>
           FEES BASED ON PUBLISHED RATES · ARC FEE IS LIVE FROM TESTNET · FOR INFORMATIONAL PURPOSES ONLY
         </div>
       </div>

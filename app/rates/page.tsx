@@ -2,14 +2,14 @@
 import { useEffect, useState } from 'react';
 
 const CURRENCIES = [
-  { code: 'NGN', name: 'Nigerian Naira',    flag: '🇳🇬', color: '#00ff88' },
-  { code: 'GHS', name: 'Ghanaian Cedi',     flag: '🇬🇭', color: '#00aaff' },
-  { code: 'KES', name: 'Kenyan Shilling',   flag: '🇰🇪', color: '#ffaa00' },
-  { code: 'ZAR', name: 'South African Rand',flag: '🇿🇦', color: '#aa55ff' },
-  { code: 'EUR', name: 'Euro',              flag: '🇪🇺', color: '#00ddff' },
-  { code: 'GBP', name: 'British Pound',     flag: '🇬🇧', color: '#ff3355' },
-  { code: 'CAD', name: 'Canadian Dollar',   flag: '🇨🇦', color: '#ffaa00' },
-  { code: 'AED', name: 'UAE Dirham',        flag: '🇦🇪', color: '#00ff88' },
+  { code: 'NGN', name: 'Nigerian Naira',     flag: '🇳🇬', color: '#16a34a' },
+  { code: 'GHS', name: 'Ghanaian Cedi',      flag: '🇬🇭', color: '#2563eb' },
+  { code: 'KES', name: 'Kenyan Shilling',    flag: '🇰🇪', color: '#d97706' },
+  { code: 'ZAR', name: 'South African Rand', flag: '🇿🇦', color: '#7c3aed' },
+  { code: 'EUR', name: 'Euro',               flag: '🇪🇺', color: '#0891b2' },
+  { code: 'GBP', name: 'British Pound',      flag: '🇬🇧', color: '#dc2626' },
+  { code: 'CAD', name: 'Canadian Dollar',    flag: '🇨🇦', color: '#d97706' },
+  { code: 'AED', name: 'UAE Dirham',         flag: '🇦🇪', color: '#16a34a' },
 ];
 
 interface RateData {
@@ -32,33 +32,23 @@ export default function RatesPage() {
   async function fetchRates() {
     try {
       setError(null);
-      const codes = CURRENCIES.map(c => c.code).join(',');
-      const res = await fetch(
-        `https://api.exchangerate-api.com/v4/latest/USD`
-      );
+      const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
       if (!res.ok) throw new Error('API error');
       const data = await res.json();
-
       const newRates: RateData[] = CURRENCIES.map(c => {
         const rate = data.rates[c.code] ?? 0;
-        // Simulate 24h change since free API doesn't provide it
         const change = parseFloat((Math.random() * 2 - 1).toFixed(2));
         return {
-          code: c.code,
-          rate,
-          change24h: change,
+          code: c.code, rate, change24h: change,
           high24h: parseFloat((rate * 1.008).toFixed(4)),
           low24h: parseFloat((rate * 0.992).toFixed(4)),
           lastUpdated: new Date().toLocaleTimeString(),
         };
       });
-
-      // Flash updated rows
       const flash: Record<string, boolean> = {};
       newRates.forEach(r => { flash[r.code] = true; });
       setFlashMap(flash);
       setTimeout(() => setFlashMap({}), 600);
-
       setRates(newRates);
       setLastRefresh(new Date());
       setCountdown(60);
@@ -75,7 +65,6 @@ export default function RatesPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Countdown timer
   useEffect(() => {
     const t = setInterval(() => setCountdown(c => c > 0 ? c - 1 : 0), 1000);
     return () => clearInterval(t);
@@ -93,40 +82,44 @@ export default function RatesPage() {
           margin-bottom: 24px;
         }
         .rate-card {
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.07);
-          border-radius: 8px;
+          background: #ffffff;
+          border: 1px solid #e2e6ed;
+          border-radius: 10px;
           padding: 18px;
-          transition: all 0.3s;
+          transition: all 0.2s;
           cursor: default;
+          box-shadow: 0 1px 3px rgba(15,17,23,0.06);
         }
         .rate-card:hover {
-          border-color: rgba(255,255,255,0.12);
-          background: rgba(255,255,255,0.05);
+          border-color: #bfdbfe;
+          box-shadow: 0 4px 12px rgba(37,99,235,0.08);
+          transform: translateY(-1px);
         }
         .rate-card.flash {
-          background: rgba(0,255,136,0.06);
-          border-color: rgba(0,255,136,0.3);
+          background: #f0fdf4;
+          border-color: #bbf7d0;
         }
         .rates-table { width: 100%; border-collapse: collapse; }
         .rates-table th {
-          font-family: Space Mono, monospace;
-          font-size: 10px;
-          color: rgba(232,240,232,0.3);
-          letter-spacing: 0.15em;
+          font-size: 11px;
+          color: #9199aa;
+          letter-spacing: 0.1em;
           text-transform: uppercase;
-          padding: 10px 16px;
+          padding: 12px 16px;
           text-align: left;
-          border-bottom: 1px solid rgba(255,255,255,0.06);
+          border-bottom: 1px solid #e2e6ed;
+          font-weight: 600;
+          background: #f8f9fb;
+          white-space: nowrap;
         }
         .rates-table td {
           padding: 14px 16px;
-          border-bottom: 1px solid rgba(255,255,255,0.04);
+          border-bottom: 1px solid #f1f3f7;
           font-size: 13px;
-          transition: background 0.3s;
+          transition: background 0.2s;
         }
-        .rates-table tr:hover td { background: rgba(255,255,255,0.02); }
-        .rates-table tr.flash td { background: rgba(0,255,136,0.05); }
+        .rates-table tr:hover td { background: #f8f9fb; }
+        .rates-table tr.flash td { background: #f0fdf4; }
         .rates-table tr:last-child td { border-bottom: none; }
 
         @media (max-width: 1024px) {
@@ -134,54 +127,51 @@ export default function RatesPage() {
         }
         @media (max-width: 640px) {
           .rates-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-          .rate-card { padding: 12px; }
+          .rate-card { padding: 14px 12px; }
           .rates-table th, .rates-table td { padding: 10px 10px; font-size: 12px; }
           .hide-mobile { display: none; }
+          .rate-value { font-size: 18px !important; }
         }
         @media (max-width: 380px) {
           .rates-grid { grid-template-columns: 1fr; }
         }
       `}</style>
 
-      <div style={{ padding: '24px 24px 60px', maxWidth: 1400, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+      <div style={{ padding: '24px 16px 60px', maxWidth: 1400, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>
-              ARC TERMINAL · LIVE RATES
+            <div style={{ fontSize: 11, color: '#9199aa', letterSpacing: '0.15em', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase' }}>
+              Fluxa · Live Rates
             </div>
-            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 800, color: '#0f1117', letterSpacing: '-0.02em', marginBottom: 4 }}>
               USDC Exchange Rates
             </h1>
-            <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)' }}>
+            <p style={{ fontSize: 14, color: '#5a6478' }}>
               1 USDC = 1 USD · Rates update every 60 seconds
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="live-dot" />
-              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.4)' }}>
+              <span style={{ fontSize: 12, color: '#5a6478' }}>
                 LIVE · refreshes in {countdown}s
               </span>
             </div>
             {lastRefresh && (
-              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.25)' }}>
+              <span style={{ fontSize: 11, color: '#9199aa' }}>
                 Last: {lastRefresh.toLocaleTimeString()}
               </span>
             )}
-            <button
-              onClick={fetchRates}
-              className="btn btn-ghost"
-              style={{ fontSize: 11, padding: '6px 14px' }}
-            >
+            <button onClick={fetchRates} className="btn btn-ghost" style={{ fontSize: 11, padding: '6px 14px' }}>
               ↻ REFRESH
             </button>
           </div>
         </div>
 
         {error && (
-          <div style={{ background: 'rgba(255,51,85,0.08)', border: '1px solid rgba(255,51,85,0.2)', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#ff3355' }}>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: '#dc2626' }}>
             ⚠ {error}
           </div>
         )}
@@ -209,23 +199,23 @@ export default function RatesPage() {
                       <span style={{ fontSize: 20 }}>{cur?.flag}</span>
                       <div>
                         <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: cur?.color }}>{r.code}</div>
-                        <div style={{ fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{cur?.name}</div>
+                        <div style={{ fontSize: 11, color: '#9199aa' }}>{cur?.name}</div>
                       </div>
                     </div>
                     <span style={{
                       fontFamily: 'Space Mono, monospace', fontSize: 11, fontWeight: 700,
-                      color: isUp ? '#00ff88' : '#ff3355',
-                      background: isUp ? 'rgba(0,255,136,0.08)' : 'rgba(255,51,85,0.08)',
-                      border: `1px solid ${isUp ? 'rgba(0,255,136,0.2)' : 'rgba(255,51,85,0.2)'}`,
-                      padding: '2px 7px', borderRadius: 4,
+                      color: isUp ? '#16a34a' : '#dc2626',
+                      background: isUp ? '#f0fdf4' : '#fef2f2',
+                      border: `1px solid ${isUp ? '#bbf7d0' : '#fecaca'}`,
+                      padding: '2px 7px', borderRadius: 100,
                     }}>
                       {isUp ? '+' : ''}{r.change24h}%
                     </span>
                   </div>
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 24, color: '#e8f0e8', marginBottom: 8 }}>
+                  <div className="rate-value" style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 22, color: '#0f1117', marginBottom: 8 }}>
                     {r.rate.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(232,240,232,0.3)', fontFamily: 'Space Mono, monospace' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#9199aa', fontFamily: 'Space Mono, monospace' }}>
                     <span>H: {r.high24h.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     <span>L: {r.low24h.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                   </div>
@@ -239,12 +229,10 @@ export default function RatesPage() {
         <div className="panel">
           <div className="panel-header">
             <div className="panel-title">DETAILED RATES TABLE</div>
-            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>
-              1 USDC → LOCAL CURRENCY
-            </span>
+            <span style={{ fontSize: 11, color: '#9199aa' }}>1 USDC → LOCAL CURRENCY</span>
           </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="rates-table">
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="rates-table" style={{ minWidth: 320 }}>
               <thead>
                 <tr>
                   <th>CURRENCY</th>
@@ -273,29 +261,26 @@ export default function RatesPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{ fontSize: 18 }}>{cur?.flag}</span>
                               <div>
-                                <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 12, color: cur?.color }}>{r.code}</div>
-                                <div style={{ fontSize: 11, color: 'rgba(232,240,232,0.3)' }}>{cur?.name}</div>
+                                <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 13, color: cur?.color }}>{r.code}</div>
+                                <div style={{ fontSize: 11, color: '#9199aa' }}>{cur?.name}</div>
                               </div>
                             </div>
                           </td>
-                          <td style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 14, color: '#e8f0e8' }}>
+                          <td style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 14, color: '#0f1117' }}>
                             {r.rate.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                           </td>
-                          <td className="hide-mobile" style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#00ff88' }}>
+                          <td className="hide-mobile" style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#16a34a' }}>
                             {r.high24h.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                           </td>
-                          <td className="hide-mobile" style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#ff3355' }}>
+                          <td className="hide-mobile" style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#dc2626' }}>
                             {r.low24h.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                           </td>
                           <td>
-                            <span style={{
-                              fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700,
-                              color: isUp ? '#00ff88' : '#ff3355',
-                            }}>
+                            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: isUp ? '#16a34a' : '#dc2626' }}>
                               {isUp ? '▲' : '▼'} {Math.abs(r.change24h)}%
                             </span>
                           </td>
-                          <td className="hide-mobile" style={{ fontFamily: 'Space Mono, monospace', fontSize: 11, color: 'rgba(232,240,232,0.3)' }}>
+                          <td className="hide-mobile" style={{ fontSize: 11, color: '#9199aa' }}>
                             {r.lastUpdated}
                           </td>
                         </tr>
@@ -306,9 +291,8 @@ export default function RatesPage() {
           </div>
         </div>
 
-        {/* Footer note */}
-        <div style={{ marginTop: 16, fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.2)', textAlign: 'center' }}>
-          RATES SOURCED FROM EXCHANGERATE-API · USDC IS PEGGED 1:1 TO USD · FOR INFORMATIONAL PURPOSES ONLY
+        <div style={{ marginTop: 16, fontSize: 11, color: '#9199aa', textAlign: 'center' }}>
+          Rates sourced from ExchangeRate-API · USDC is pegged 1:1 to USD · For informational purposes only
         </div>
       </div>
     </>

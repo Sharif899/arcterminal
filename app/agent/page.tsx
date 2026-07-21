@@ -34,7 +34,7 @@ const AGENT_WALLET = MY_WALLET;
 const CURRENCIES = ['NGN', 'GHS', 'KES', 'EUR', 'GBP', 'ZAR'];
 
 const TYPE_COLORS: Record<string, string> = {
-  info: 'rgba(232,240,232,0.5)',
+  info: 'var(--text-2)',
   decision: '#00aaff',
   action: '#ffaa00',
   success: '#00ff88',
@@ -172,16 +172,16 @@ export default function AgentPage() {
   }
 
   return (
-    <div style={{ padding: '24px 24px 60px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+    <div className="agent-page" style={{ padding: '24px 24px 60px', maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 1 }}>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · AGENTIC ECONOMY</div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e8f0e8', letterSpacing: '-0.02em', marginBottom: 4 }}>
+          <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'var(--text-3)', letterSpacing: '0.2em', marginBottom: 6 }}>ARC TERMINAL · AGENTIC ECONOMY</div>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em', marginBottom: 4 }}>
             Auto-Rate Agent
             {running && <span style={{ marginLeft: 12, fontSize: 13, color: '#00ff88', fontWeight: 400 }}>● RUNNING</span>}
           </h1>
-          <p style={{ fontSize: 13, color: 'rgba(232,240,232,0.4)', maxWidth: 500 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', maxWidth: 500 }}>
             Autonomous agent that monitors live rates and triggers USDC payments on Arc when conditions are met
           </p>
         </div>
@@ -193,15 +193,15 @@ export default function AgentPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 24 }}>
+      <div className="agent-stats-grid" style={{ display: 'grid', gap: 12, marginBottom: 24 }}>
         {[
-          { label: 'AGENT STATUS', value: running ? 'RUNNING' : 'STOPPED', color: running ? '#00ff88' : 'rgba(232,240,232,0.3)' },
+          { label: 'AGENT STATUS', value: running ? 'RUNNING' : 'STOPPED', color: running ? '#00ff88' : 'var(--text-3)' },
           { label: 'CYCLES RUN', value: String(cycleCount), color: '#00aaff' },
           { label: 'TX EXECUTED', value: String(totalTx), color: '#00ff88' },
           { label: 'USDC MOVED', value: `$${totalUSDC}`, color: '#ffaa00' },
         ].map(s => (
           <div key={s.label} className="panel" style={{ padding: 16 }}>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'rgba(232,240,232,0.3)', letterSpacing: '0.15em', marginBottom: 6 }}>{s.label}</div>
+            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 9, color: 'var(--text-3)', letterSpacing: '0.15em', marginBottom: 6 }}>{s.label}</div>
             <div style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 18, color: s.color }}>{s.value}</div>
           </div>
         ))}
@@ -210,10 +210,10 @@ export default function AgentPage() {
       {Object.keys(liveRates).length > 0 && (
         <div className="panel" style={{ padding: '12px 16px', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>LIVE</span>
+            <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'var(--text-3)' }}>LIVE</span>
             {CURRENCIES.map(c => (
               <span key={c} style={{ fontFamily: 'Space Mono, monospace', fontSize: 11 }}>
-                <span style={{ color: 'rgba(232,240,232,0.4)' }}>{c} </span>
+                <span style={{ color: 'var(--text-2)' }}>{c} </span>
                 <span style={{ color: '#00ff88', fontWeight: 700 }}>{(liveRates[c] ?? 0).toFixed(2)}</span>
               </span>
             ))}
@@ -221,7 +221,7 @@ export default function AgentPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
+      <div className="agent-main-grid" style={{ display: 'grid', gap: 20, alignItems: 'start' }}>
 
         <div className="panel" style={{ overflow: 'hidden' }}>
           <div className="panel-header">
@@ -230,19 +230,19 @@ export default function AgentPage() {
               AGENT LOG
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{logs.length} ENTRIES</span>
+              <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'var(--text-3)' }}>{logs.length} ENTRIES</span>
               <button onClick={() => setLogs([])} className="btn btn-ghost" style={{ fontSize: 10, padding: '4px 10px' }}>CLEAR</button>
             </div>
           </div>
-          <div style={{ height: 400, overflowY: 'auto', fontFamily: 'Space Mono, monospace', fontSize: 11, lineHeight: 1.8, padding: 16, background: 'rgba(0,0,0,0.3)' }}>
+          <div style={{ height: 400, overflowY: 'auto', fontFamily: 'Space Mono, monospace', fontSize: 11, lineHeight: 1.8, padding: 16, background: '#0d0f14', borderTop: '1px solid var(--border)' }}>
             {logs.length === 0 ? (
-              <div style={{ color: 'rgba(232,240,232,0.25)', textAlign: 'center', paddingTop: 40 }}>
+              <div style={{ color: 'var(--text-3)', textAlign: 'center', paddingTop: 40 }}>
                 Start the agent to see live decision logs...
               </div>
             ) : (
               logs.map(log => (
                 <div key={log.id} style={{ padding: '3px 8px', borderRadius: 4, marginBottom: 2, wordBreak: 'break-word' }}>
-                  <span style={{ color: 'rgba(232,240,232,0.25)', marginRight: 8 }}>{log.timestamp}</span>
+                  <span style={{ color: 'var(--text-3)', marginRight: 8 }}>{log.timestamp}</span>
                   <span style={{ color: TYPE_COLORS[log.type], marginRight: 6 }}>{TYPE_ICONS[log.type]}</span>
                   <span style={{ color: TYPE_COLORS[log.type] }}>{log.message}</span>
                   {log.txHash && (
@@ -268,7 +268,7 @@ export default function AgentPage() {
             </div>
 
             {showAddRule && (
-              <div style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,255,136,0.02)' }}>
+              <div style={{ padding: 16, borderBottom: '1px solid var(--border)', background: 'rgba(0,255,136,0.02)' }}>
                 <div style={{ marginBottom: 10 }}>
                   <label className="label">CURRENCY</label>
                   <select className="select" value={newRule.currency} onChange={e => setNewRule(p => ({ ...p, currency: e.target.value }))}>
@@ -311,9 +311,9 @@ export default function AgentPage() {
 
             <div>
               {rules.map(rule => (
-                <div key={rule.id} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', background: rule.triggered ? 'rgba(0,255,136,0.04)' : 'transparent', opacity: rule.active ? 1 : 0.5 }}>
+                <div key={rule.id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: rule.triggered ? 'rgba(0,255,136,0.04)' : 'transparent', opacity: rule.active ? 1 : 0.5 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
-                    <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: '#e8f0e8' }}>
+                    <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
                       {rule.currency} {rule.condition} {rule.targetRate.toLocaleString()}
                     </span>
                     {rule.triggered
@@ -321,7 +321,7 @@ export default function AgentPage() {
                       : <span className="badge badge-amber" style={{ fontSize: 9 }}>WATCHING</span>
                     }
                   </div>
-                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.35)', marginBottom: 4 }}>
+                  <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'var(--text-3)', marginBottom: 4 }}>
                     {rule.action === 'convert' ? `→ Auto-send ${rule.amount} USDC to ${rule.recipientWallet.slice(0, 10)}...` : `→ Alert only`}
                   </div>
                   {liveRates[rule.currency] && (
@@ -352,9 +352,9 @@ export default function AgentPage() {
               { label: 'Method', value: 'kit.send()' },
               { label: 'Data', value: 'ExchangeRate API' },
             ].map(i => (
-              <div key={i.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'rgba(232,240,232,0.3)' }}>{i.label}</span>
-                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, fontWeight: 700, color: '#e8f0e8' }}>{i.value}</span>
+              <div key={i.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: 'var(--text-3)' }}>{i.label}</span>
+                <span style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, fontWeight: 700, color: 'var(--text)' }}>{i.value}</span>
               </div>
             ))}
           </div>

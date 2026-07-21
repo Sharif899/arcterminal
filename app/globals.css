@@ -212,10 +212,16 @@ body {
 /* ── Layout ── */
 .wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
 
+/* ── Agent / Rules page grids ── */
+.agent-stats-grid { grid-template-columns: repeat(4, 1fr); }
+.agent-main-grid { grid-template-columns: 1fr 320px; }
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .wrap { padding: 0 16px; }
   .btn { font-size: 12px; padding: 9px 16px; }
+  .agent-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .agent-main-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {
@@ -223,6 +229,8 @@ body {
   .btn { font-size: 11px; padding: 8px 12px; }
   .input, .select { font-size: 12px; padding: 8px 10px; }
   .ticker-item { padding: 0 12px; font-size: 11px; }
+  .agent-stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px !important; }
+  .agent-page { padding: 16px 12px 40px !important; }
 }
 
 /* ── Animations ── */
