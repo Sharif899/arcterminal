@@ -115,7 +115,6 @@ export default function WalletConnector() {
           : '🦊 CONNECT'}
       </button>
 
-      {/* Mobile manual network guide */}
       {showMobileGuide && (
         <div style={{
           marginTop: 8, fontSize: 10, color: '#0f1117',
