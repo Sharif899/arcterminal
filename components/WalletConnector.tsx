@@ -33,7 +33,6 @@ export default function WalletConnector() {
   if (address && balances) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, position: 'relative' }}>
-        {/* Balances */}
         <div style={{ display: 'flex', gap: 12, fontFamily: 'Space Mono, monospace', fontSize: 11 }}>
           <div style={{ textAlign: 'right' }}>
             <div style={{ color: '#9199aa', fontSize: 9, letterSpacing: '0.1em' }}>USDC</div>
@@ -45,7 +44,6 @@ export default function WalletConnector() {
           </div>
         </div>
 
-        {/* Address button */}
         <button
           onClick={() => setShowMenu(!showMenu)}
           style={{
@@ -60,7 +58,6 @@ export default function WalletConnector() {
           <span style={{ fontSize: 9, opacity: 0.5 }}>▾</span>
         </button>
 
-        {/* Dropdown */}
         {showMenu && (
           <>
             <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 98 }} />
@@ -82,9 +79,10 @@ export default function WalletConnector() {
               </button>
               
                 href={`https://testnet.arcscan.app/address/${address}`}
-                target="_blank" rel="noopener noreferrer"
+                target="_blank"
+                rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}
-                style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12, color: '#5a6478', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}
+                style={{ width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#5a6478', borderRadius: 6, textDecoration: 'none' }}
               >
                 ↗ View on Arcscan
               </a>
@@ -110,9 +108,7 @@ export default function WalletConnector() {
         disabled={connecting}
         style={{ fontSize: 11, padding: '7px 16px' }}
       >
-        {connecting
-          ? <><span className="spinner" /> CONNECTING…</>
-          : '🦊 CONNECT'}
+        {connecting ? <><span className="spinner" /> CONNECTING…</> : '🦊 CONNECT'}
       </button>
 
       {showMobileGuide && (
@@ -120,8 +116,7 @@ export default function WalletConnector() {
           marginTop: 8, fontSize: 10, color: '#0f1117',
           background: '#eff4ff', border: '1px solid #bfdbfe',
           borderRadius: 8, padding: '10px 12px', maxWidth: 280,
-          lineHeight: 1.7, textAlign: 'left',
-          fontFamily: 'Space Mono, monospace',
+          lineHeight: 1.7, textAlign: 'left', fontFamily: 'Space Mono, monospace',
         }}>
           <div style={{ color: '#2563eb', fontWeight: 700, marginBottom: 6 }}>📱 Add Arc Testnet Manually</div>
           <div style={{ color: '#5a6478', marginBottom: 4 }}>In MetaMask → Settings → Networks → Add Network:</div>
@@ -132,12 +127,7 @@ export default function WalletConnector() {
           <div><span style={{ color: '#9199aa' }}>Explorer:</span> <span style={{ color: '#2563eb' }}>testnet.arcscan.app</span></div>
           <button
             onClick={handleConnect}
-            style={{
-              marginTop: 10, width: '100%', padding: '6px 0',
-              background: '#eff4ff', border: '1px solid #bfdbfe',
-              borderRadius: 6, color: '#2563eb',
-              fontFamily: 'Space Mono, monospace', fontSize: 10, cursor: 'pointer',
-            }}
+            style={{ marginTop: 10, width: '100%', padding: '6px 0', background: '#eff4ff', border: '1px solid #bfdbfe', borderRadius: 6, color: '#2563eb', fontFamily: 'Space Mono, monospace', fontSize: 10, cursor: 'pointer' }}
           >
             ↺ Try Again After Adding
           </button>
