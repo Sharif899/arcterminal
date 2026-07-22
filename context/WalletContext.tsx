@@ -1,9 +1,8 @@
 'use client';
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { connectWallet, getConnectedAddress, getAllBalances } from '@/lib/arc';
+import { connectWallet, getAllBalances } from '@/lib/arc';
 
 interface Balances { usdc: string; eurc: string; }
-
 interface WalletContextType {
   address: string | null;
   balances: Balances | null;
@@ -21,23 +20,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
-    const isDisconnected = typeof window !== 'undefined' && sessionStorage.getItem('disconnected') === 'true';
-    if (isDisconnected) return;
-    getConnectedAddress().then(async (addr) => {
-      if (addr) {
-        setAddress(addr);
-        const bal = await getAllBalances(addr);
-        setBalances(bal);
-      }
-    });
+    // NEVER auto-reconnect — user must always click connect manually
     const eth = (window as any).ethereum;
     if (!eth) return;
+
+    // Only listen for account changes if already connected in this session
     const handler = (accounts: string[]) => {
-      if (accounts.length === 0) { setAddress(null); setBalances(null); }
-      else {
-        setAddress(accounts[0]);
-        sessionStorage.removeItem('disconnected');
-        getAllBalances(accounts[0]).then(setBalances);
+      if (accounts.length === 0) {
+        setAddress(null);
+        setBalances(null);
+        localStorage.setItem('fluxa_disconnected', 'true');
       }
     };
     eth.on('accountsChanged', handler);
@@ -47,18 +39,23 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   async function connect() {
     setConnecting(true);
     try {
-      sessionStorage.removeItem('disconnected');
+      // This triggers the MetaMask popup every time
+      localStorage.removeItem('fluxa_disconnected');
       const addr = await connectWallet();
       setAddress(addr);
       const bal = await getAllBalances(addr);
       setBalances(bal);
-    } finally { setConnecting(false); }
+    } finally {
+      setConnecting(false);
+    }
   }
 
   function disconnect() {
     setAddress(null);
     setBalances(null);
-    sessionStorage.setItem('disconnected', 'true');
+    localStorage.setItem('fluxa_disconnected', 'true');
+    // Clear any session data
+    sessionStorage.removeItem('disconnected');
   }
 
   async function refreshBalances() {
