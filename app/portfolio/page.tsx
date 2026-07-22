@@ -1,48 +1,32 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { connectWallet, getConnectedAddress, getAllBalances, EXPLORER } from '@/lib/arc';
+import { useWallet } from '@/context/WalletContext';
 import { getTxHistory, type TxRecord } from '@/lib/supabase';
 
 export default function PortfolioPage() {
-  const [wallet, setWallet] = useState('');
-  const [balances, setBalances] = useState({ usdc: '0.00', eurc: '0.00' });
+  const { address, balances, connecting, connect } = useWallet();
   const [history, setHistory] = useState<TxRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
-    getConnectedAddress().then(async (addr) => {
-      if (addr) { setWallet(addr); await loadData(addr); }
-    });
-  }, []);
+    if (address) loadData(address);
+  }, [address]);
 
   async function loadData(addr: string) {
     setLoading(true);
     try {
-      const [bal, hist] = await Promise.all([getAllBalances(addr), getTxHistory(addr, 20)]);
-      setBalances(bal);
+      const hist = await getTxHistory(addr, 20);
       setHistory(hist);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
 
-  async function connect() {
-    setConnecting(true);
-    try {
-      const addr = await connectWallet();
-      setWallet(addr);
-      await loadData(addr);
-    } catch (e) { console.error(e); }
-    finally { setConnecting(false); }
-  }
-
-  const usdc = parseFloat(balances.usdc);
-  const eurc = parseFloat(balances.eurc);
+  const usdc = parseFloat(balances?.usdc || '0');
+  const eurc = parseFloat(balances?.eurc || '0');
   const total = usdc + eurc * 1.09;
   const usdcPct = total > 0 ? Math.round((usdc / total) * 100) : 50;
   const eurcPct = 100 - usdcPct;
-
   const txVolume = history.reduce((s, t) => s + parseFloat(t.amount || '0'), 0);
   const sends = history.filter(t => t.type === 'send').length;
   const swaps = history.filter(t => t.type === 'swap').length;
@@ -57,12 +41,10 @@ export default function PortfolioPage() {
     return `${Math.floor(diff / 86400)}d ago`;
   }
 
-  if (!wallet) return (
+  if (!address) return (
     <div style={{ padding: '80px 24px', textAlign: 'center' }}>
       <div style={{ fontSize: 48, marginBottom: 20 }}>📊</div>
-      <div style={{ fontSize: 16, color: '#0f1117', fontWeight: 700, marginBottom: 8 }}>
-        Connect wallet to view Agent Wallet
-      </div>
+      <div style={{ fontSize: 16, color: '#0f1117', fontWeight: 700, marginBottom: 8 }}>Connect wallet to view Agent Wallet</div>
       <div style={{ fontSize: 13, color: '#5a6478', marginBottom: 32 }}>
         See your USDC & EURC balances, allocation, and agent action history
       </div>
@@ -75,33 +57,12 @@ export default function PortfolioPage() {
   return (
     <>
       <style>{`
-        .portfolio-balance-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 16px;
-          margin-bottom: 20px;
-        }
-        .portfolio-mid-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 20px;
-          margin-bottom: 20px;
-        }
-        .portfolio-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 24px;
-          flex-wrap: wrap;
-          gap: 12px;
-        }
-        .portfolio-header-actions { display: flex; gap: 10px; }
+        .portfolio-balance-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+        .portfolio-mid-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .portfolio-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
         .tx-row { display: flex; align-items: center; gap: 14px; padding: 12px 18px; }
         .tx-chain { display: block; }
-
-        @media (max-width: 1024px) {
-          .portfolio-balance-grid { grid-template-columns: repeat(2, 1fr); }
-        }
+        @media (max-width: 1024px) { .portfolio-balance-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 640px) {
           .portfolio-balance-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
           .portfolio-mid-grid { grid-template-columns: 1fr; }
@@ -111,37 +72,30 @@ export default function PortfolioPage() {
           .tx-row { padding: 10px 14px; gap: 10px; }
           .tx-chain { display: none; }
         }
-        @media (max-width: 400px) {
-          .portfolio-balance-grid { grid-template-columns: 1fr 1fr; }
-          .balance-card-value { font-size: 15px !important; }
-        }
       `}</style>
 
       <div className="portfolio-wrap" style={{ padding: '32px 24px', maxWidth: 1200, margin: '0 auto' }}>
-
-        {/* Header */}
         <div className="portfolio-header">
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 4 }}>Agent Wallet</h1>
-            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#16a34a' }}>{short(wallet)}</div>
+            <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 12, color: '#16a34a' }}>{short(address)}</div>
           </div>
-          <div className="portfolio-header-actions">
-            <button className="btn btn-ghost" onClick={() => loadData(wallet)} style={{ fontSize: 11 }}>↻ REFRESH</button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn btn-ghost" onClick={() => loadData(address)} style={{ fontSize: 11 }}>↻ REFRESH</button>
             <Link href="/terminal" className="btn btn-primary" style={{ fontSize: 11 }}>ACT →</Link>
           </div>
         </div>
 
-        {/* Balance cards */}
         <div className="portfolio-balance-grid">
           {[
             { label: 'TOTAL VALUE', value: `$${total.toFixed(2)}`, sub: 'USD equivalent', color: '#0f1117', icon: '💼' },
-            { label: 'USDC', value: `$${balances.usdc}`, sub: `${usdcPct}% of wallet`, color: '#16a34a', icon: '💵' },
-            { label: 'EURC', value: `€${balances.eurc}`, sub: `${eurcPct}% of wallet`, color: '#2563eb', icon: '💶' },
+            { label: 'USDC', value: `$${balances?.usdc || '0.00'}`, sub: `${usdcPct}% of wallet`, color: '#16a34a', icon: '💵' },
+            { label: 'EURC', value: `€${balances?.eurc || '0.00'}`, sub: `${eurcPct}% of wallet`, color: '#2563eb', icon: '💶' },
             { label: 'TX VOLUME', value: `$${txVolume.toFixed(2)}`, sub: `${history.length} agent actions`, color: '#7c3aed', icon: '📊' },
-          ].map((card, i) => (
-            <div key={card.label} className={`panel animate-fade-up delay-${i + 1}`} style={{ padding: 20 }}>
+          ].map((card) => (
+            <div key={card.label} className="panel" style={{ padding: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ fontSize: 10, color: '#9199aa', letterSpacing: '0.12em', fontWeight: 600, textTransform: 'uppercase' }}>{card.label}</span>
+                <span style={{ fontSize: 10, color: '#9199aa', letterSpacing: '0.12em', fontWeight: 600 }}>{card.label}</span>
                 <span style={{ fontSize: 18 }}>{card.icon}</span>
               </div>
               <div className="balance-card-value" style={{ fontFamily: 'Space Mono, monospace', fontWeight: 700, fontSize: 24, color: card.color, marginBottom: 4 }}>
@@ -152,20 +106,17 @@ export default function PortfolioPage() {
           ))}
         </div>
 
-        {/* Allocation + Activity */}
         <div className="portfolio-mid-grid">
-
-          {/* Allocation bar */}
-          <div className="panel animate-fade-up delay-2">
+          <div className="panel">
             <div className="panel-header"><div className="panel-title">ALLOCATION</div></div>
             <div style={{ padding: 20 }}>
               <div style={{ display: 'flex', height: 10, borderRadius: 6, overflow: 'hidden', marginBottom: 16, gap: 2 }}>
-                <div style={{ flex: usdcPct, background: 'linear-gradient(90deg, #16a34a, #22c55e)', transition: 'flex 0.5s', borderRadius: '6px 0 0 6px' }} />
-                <div style={{ flex: eurcPct, background: 'linear-gradient(90deg, #2563eb, #60a5fa)', transition: 'flex 0.5s', borderRadius: '0 6px 6px 0' }} />
+                <div style={{ flex: usdcPct, background: 'linear-gradient(90deg, #16a34a, #22c55e)', borderRadius: '6px 0 0 6px' }} />
+                <div style={{ flex: eurcPct, background: 'linear-gradient(90deg, #2563eb, #60a5fa)', borderRadius: '0 6px 6px 0' }} />
               </div>
               {[
-                { label: 'USDC', pct: usdcPct, value: balances.usdc, color: '#16a34a' },
-                { label: 'EURC', pct: eurcPct, value: balances.eurc, color: '#2563eb' },
+                { label: 'USDC', pct: usdcPct, value: balances?.usdc || '0.00', color: '#16a34a' },
+                { label: 'EURC', pct: eurcPct, value: balances?.eurc || '0.00', color: '#2563eb' },
               ].map(item => (
                 <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -181,8 +132,7 @@ export default function PortfolioPage() {
             </div>
           </div>
 
-          {/* Activity breakdown */}
-          <div className="panel animate-fade-up delay-3">
+          <div className="panel">
             <div className="panel-header"><div className="panel-title">AGENT ACTIVITY</div></div>
             <div style={{ padding: 20 }}>
               {[
@@ -203,8 +153,7 @@ export default function PortfolioPage() {
           </div>
         </div>
 
-        {/* Recent transactions */}
-        <div className="panel animate-fade-up delay-4">
+        <div className="panel">
           <div className="panel-header">
             <div className="panel-title">RECENT AGENT ACTIONS</div>
             <Link href="/history" style={{ fontSize: 12, color: '#2563eb', textDecoration: 'none', fontWeight: 600 }}>VIEW ALL →</Link>
