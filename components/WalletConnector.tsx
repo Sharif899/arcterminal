@@ -1,105 +1,115 @@
-'use client';
-import { useState } from 'react';
-import { useWallet } from '@/context/WalletContext';
+"use client";
+import { useState } from "react";
 
 export default function WalletConnector() {
-  const { address, balances, connecting, connect, disconnect } = useWallet();
-  const [showMenu, setShowMenu] = useState(false);
-  const [error, setError] = useState('');
-  const [showMobileGuide, setShowMobileGuide] = useState(false);
+  const [address, setAddress] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
 
-  async function handleConnect() {
-    setError('');
-    setShowMobileGuide(false);
+  function shortAddress(addr: string) {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  }
+
+  async function connectWallet() {
+    if (connecting) return;
+    if (typeof window === "undefined" || !(window as any).ethereum) {
+      alert("No wallet found. Please install MetaMask or Rabby.");
+      return;
+    }
+    setConnecting(true);
     try {
-      await connect();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.startsWith('MOBILE_CHAIN_SWITCH:')) {
-        setShowMobileGuide(true);
+      // Always force popup — never silently reconnect
+      await (window as any).ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+      const accounts = await (window as any).ethereum.request({
+        method: "eth_accounts",
+      });
+      if (accounts.length > 0) setAddress(accounts[0]);
+    } catch (e: any) {
+      if (e.code === 4001) {
+        console.log("User rejected connection");
       } else {
-        setError(msg);
+        console.error(e);
+      }
+    }
+    setConnecting(false);
+  }
+
+  async function disconnectWallet() {
+    setAddress(null);
+    if (typeof window !== "undefined" && (window as any).ethereum) {
+      try {
+        await (window as any).ethereum.request({
+          method: "wallet_revokePermissions",
+          params: [{ eth_accounts: {} }],
+        });
+      } catch {
+        // Fail silently — not all wallets support this
       }
     }
   }
 
-  function handleDisconnect() {
-    disconnect();
-    setShowMenu(false);
-  }
-
-  function short(addr: string) { return addr.slice(0, 6) + '\u2026' + addr.slice(-4); }
-
-  if (address && balances) {
+  if (address) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, position: 'relative' }}>
-        <div style={{ display: 'flex', gap: 12, fontFamily: 'Space Mono, monospace', fontSize: 11 }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ color: '#9199aa', fontSize: 9, letterSpacing: '0.1em' }}>USDC</div>
-            <div style={{ color: '#16a34a', fontWeight: 700 }}>${balances.usdc}</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ color: '#9199aa', fontSize: 9, letterSpacing: '0.1em' }}>EURC</div>
-            <div style={{ color: '#2563eb', fontWeight: 700 }}>${balances.eurc}</div>
-          </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          background: "rgba(0,255,136,0.06)", border: "1px solid rgba(0,255,136,0.2)",
+          borderRadius: 6, padding: "5px 10px",
+        }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#00ff88" }} />
+          <span style={{ fontFamily: "Space Mono, monospace", fontSize: 11, color: "#00ff88", fontWeight: 700 }}>
+            {shortAddress(address)}
+          </span>
         </div>
         <button
-          onClick={() => setShowMenu(!showMenu)}
-          style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: '#f0fdf4', border: '1px solid #bbf7d0', fontFamily: 'Space Mono, monospace', fontSize: 11, color: '#16a34a' }}
+          onClick={disconnectWallet}
+          title="Disconnect wallet"
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: "rgba(232,240,232,0.3)", padding: "4px",
+            transition: "color 0.15s",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = "#ff3355")}
+          onMouseLeave={e => (e.currentTarget.style.color = "rgba(232,240,232,0.3)")}
         >
-          <span className="live-dot" style={{ width: 5, height: 5 }} />
-          {short(address)}
-          <span style={{ fontSize: 9, opacity: 0.5 }}>▾</span>
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
         </button>
-        {showMenu && (
-          <>
-            <div onClick={() => setShowMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 98 }} />
-            <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, background: '#ffffff', border: '1px solid #e2e6ed', borderRadius: 10, padding: 8, minWidth: 220, zIndex: 99, boxShadow: '0 8px 32px rgba(15,17,23,0.12)' }}>
-              <div style={{ padding: '8px 12px', borderBottom: '1px solid #f1f3f7', marginBottom: 4 }}>
-                <div style={{ fontSize: 9, color: '#9199aa', letterSpacing: '0.1em', marginBottom: 4, fontWeight: 600 }}>CONNECTED</div>
-                <div style={{ fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#5a6478', wordBreak: 'break-all' }}>{address}</div>
-              </div>
-              <button onClick={() => { navigator.clipboard.writeText(address); setShowMenu(false); }} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12, color: '#5a6478', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                📋 Copy Address
-              </button>
-              <a href={`https://testnet.arcscan.app/address/${address}`} target="_blank" rel="noopener noreferrer" onClick={() => setShowMenu(false)} style={{ width: '100%', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#5a6478', borderRadius: 6, textDecoration: 'none' }}>
-                ↗ View on Arcscan
-              </a>
-              <div style={{ height: 1, background: '#f1f3f7', margin: '4px 0' }} />
-              <button onClick={handleDisconnect} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12, color: '#dc2626', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                ✕ Disconnect
-              </button>
-            </div>
-          </>
-        )}
       </div>
     );
   }
 
   return (
-    <div style={{ flexShrink: 0, textAlign: 'right' }}>
-      <button className="btn btn-primary" onClick={handleConnect} disabled={connecting} style={{ fontSize: 11, padding: '7px 16px' }}>
-        {connecting ? <><span className="spinner" /> CONNECTING…</> : '🦊 CONNECT'}
-      </button>
-      {showMobileGuide && (
-        <div style={{ marginTop: 8, fontSize: 10, color: '#0f1117', background: '#eff4ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 12px', maxWidth: 280, lineHeight: 1.7, textAlign: 'left', fontFamily: 'Space Mono, monospace' }}>
-          <div style={{ color: '#2563eb', fontWeight: 700, marginBottom: 6 }}>📱 Add Arc Testnet Manually</div>
-          <div style={{ color: '#5a6478', marginBottom: 4 }}>In MetaMask → Settings → Networks → Add Network:</div>
-          <div><span style={{ color: '#9199aa' }}>Name:</span> <span style={{ color: '#2563eb' }}>Arc Testnet</span></div>
-          <div><span style={{ color: '#9199aa' }}>RPC:</span> <span style={{ color: '#2563eb' }}>rpc.testnet.arc.network</span></div>
-          <div><span style={{ color: '#9199aa' }}>Chain ID:</span> <span style={{ color: '#2563eb' }}>5042002</span></div>
-          <div><span style={{ color: '#9199aa' }}>Symbol:</span> <span style={{ color: '#2563eb' }}>USDC</span></div>
-          <div><span style={{ color: '#9199aa' }}>Explorer:</span> <span style={{ color: '#2563eb' }}>testnet.arcscan.app</span></div>
-          <button onClick={handleConnect} style={{ marginTop: 10, width: '100%', padding: '6px 0', background: '#eff4ff', border: '1px solid #bfdbfe', borderRadius: 6, color: '#2563eb', fontFamily: 'Space Mono, monospace', fontSize: 10, cursor: 'pointer' }}>
-            ↺ Try Again After Adding
-          </button>
-        </div>
+    <button
+      onClick={connectWallet}
+      disabled={connecting}
+      style={{
+        background: connecting ? "rgba(0,255,136,0.1)" : "rgba(0,255,136,0.12)",
+        border: "1px solid rgba(0,255,136,0.3)",
+        borderRadius: 6, padding: "6px 14px", cursor: connecting ? "not-allowed" : "pointer",
+        fontFamily: "Space Mono, monospace", fontSize: 11, fontWeight: 700,
+        color: "#00ff88", letterSpacing: "0.08em", transition: "all 0.15s",
+        display: "flex", alignItems: "center", gap: 6,
+      }}
+      onMouseEnter={e => { if (!connecting) e.currentTarget.style.background = "rgba(0,255,136,0.2)"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,255,136,0.12)"; }}
+    >
+      {connecting ? (
+        <>
+          <span className="spinner" style={{ width: 10, height: 10, borderColor: "rgba(0,255,136,0.3)", borderTopColor: "#00ff88" }} />
+          CONNECTING...
+        </>
+      ) : (
+        <>
+          <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+          CONNECT WALLET
+        </>
       )}
-      {error && (
-        <div style={{ marginTop: 6, fontFamily: 'Space Mono, monospace', fontSize: 10, color: '#dc2626', maxWidth: 260, lineHeight: 1.4 }}>
-          ✗ {error}
-        </div>
-      )}
-    </div>
+    </button>
   );
 }
