@@ -77,7 +77,7 @@ function TerminalContent() {
     { id: 'bridge', label: 'BRIDGE', color: '#d97706' },
   ];
 
-  const displayBalances = balances || { usdc: '0.00', eurc: '0.00' };
+  const displayBalances = (address && balances) ? balances : { usdc: '0.00', eurc: '0.00' };
 
   return (
     <div className="wrap" style={{ padding: '32px 24px' }}>
