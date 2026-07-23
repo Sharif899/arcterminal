@@ -118,8 +118,8 @@ export default function Nav() {
               </svg>
             </div>
             <div>
-              <div style={{ fontFamily: "Space Mono, monospace", fontWeight: 700, fontSize: 13, letterSpacing: "0.08em", color: "#00ff88" }}>ARC AGENT</div>
-              <div className="nav-logo-subtitle" style={{ fontFamily: "Space Mono, monospace", fontSize: 9, color: "rgba(232,240,232,0.28)", letterSpacing: "0.15em" }}>AGENTIC ECONOMY TERMINAL</div>
+              <div style={{ fontFamily: "Space Mono, monospace", fontWeight: 700, fontSize: 13, letterSpacing: "0.08em", color: "#00ff88" }}>FLUXA</div>
+              <div className="nav-logo-subtitle" style={{ fontFamily: "Space Mono, monospace", fontSize: 9, color: "rgba(232,240,232,0.28)", letterSpacing: "0.15em" }}>AUTONOMOUS AGENT · BUILT ON ARC</div>
             </div>
           </Link>
 
