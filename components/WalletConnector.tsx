@@ -4,6 +4,8 @@ import { useState } from "react";
 export default function WalletConnector() {
   const [address, setAddress] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   function shortAddress(addr: string) {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -17,7 +19,6 @@ export default function WalletConnector() {
     }
     setConnecting(true);
     try {
-      // Always force popup — never silently reconnect
       await (window as any).ethereum.request({
         method: "wallet_requestPermissions",
         params: [{ eth_accounts: {} }],
@@ -38,6 +39,7 @@ export default function WalletConnector() {
 
   async function disconnectWallet() {
     setAddress(null);
+    setShowMenu(false);
     if (typeof window !== "undefined" && (window as any).ethereum) {
       try {
         await (window as any).ethereum.request({
@@ -45,39 +47,113 @@ export default function WalletConnector() {
           params: [{ eth_accounts: {} }],
         });
       } catch {
-        // Fail silently — not all wallets support this
+        // Fail silently
       }
     }
   }
 
+  function copyAddress() {
+    if (!address) return;
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
   if (address) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{
-          display: "flex", alignItems: "center", gap: 6,
-          background: "rgba(0,255,136,0.06)", border: "1px solid rgba(0,255,136,0.2)",
-          borderRadius: 6, padding: "5px 10px",
-        }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#00ff88" }} />
-          <span style={{ fontFamily: "Space Mono, monospace", fontSize: 11, color: "#00ff88", fontWeight: 700 }}>
-            {shortAddress(address)}
-          </span>
-        </div>
+      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        {/* Address button */}
         <button
-          onClick={disconnectWallet}
-          title="Disconnect wallet"
+          onClick={() => setShowMenu(!showMenu)}
           style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "rgba(232,240,232,0.3)", padding: "4px",
-            transition: "color 0.15s",
+            display: "flex", alignItems: "center", gap: 6,
+            background: "rgba(0,255,136,0.06)", border: "1px solid rgba(0,255,136,0.2)",
+            borderRadius: 6, padding: "5px 10px", cursor: "pointer",
+            fontFamily: "Space Mono, monospace", fontSize: 11, color: "#00ff88", fontWeight: 700,
           }}
-          onMouseEnter={e => (e.currentTarget.style.color = "#ff3355")}
-          onMouseLeave={e => (e.currentTarget.style.color = "rgba(232,240,232,0.3)")}
         >
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#00ff88" }} />
+          {shortAddress(address)}
+          <span style={{ fontSize: 9, opacity: 0.5 }}>▾</span>
         </button>
+
+        {/* Dropdown menu */}
+        {showMenu && (
+          <>
+            {/* Backdrop */}
+            <div
+              onClick={() => setShowMenu(false)}
+              style={{ position: "fixed", inset: 0, zIndex: 98 }}
+            />
+            <div style={{
+              position: "absolute", top: "calc(100% + 8px)", right: 0,
+              background: "#0a0f0c", border: "1px solid rgba(0,255,136,0.15)",
+              borderRadius: 8, padding: 6, minWidth: 220, zIndex: 99,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            }}>
+              {/* Full address */}
+              <div style={{
+                padding: "8px 12px", borderBottom: "1px solid rgba(0,255,136,0.08)",
+                marginBottom: 4,
+              }}>
+                <div style={{ fontSize: 9, color: "rgba(232,240,232,0.3)", letterSpacing: "0.1em", marginBottom: 4, fontFamily: "Space Mono, monospace" }}>CONNECTED</div>
+                <div style={{ fontFamily: "Space Mono, monospace", fontSize: 10, color: "rgba(232,240,232,0.5)", wordBreak: "break-all" }}>{address}</div>
+              </div>
+
+              {/* Copy address */}
+              <button
+                onClick={copyAddress}
+                style={{
+                  width: "100%", padding: "8px 12px", background: "none", border: "none",
+                  cursor: "pointer", textAlign: "left", fontSize: 12,
+                  color: copied ? "#00ff88" : "rgba(232,240,232,0.6)",
+                  borderRadius: 4, display: "flex", alignItems: "center", gap: 8,
+                  fontFamily: "Space Mono, monospace", transition: "all 0.15s",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,255,136,0.06)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "none")}
+              >
+                {copied ? "✓ COPIED!" : "📋 COPY ADDRESS"}
+              </button>
+
+              {/* View on Arcscan */}
+              
+                href={`https://testnet.arcscan.app/address/${address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowMenu(false)}
+                style={{
+                  width: "100%", padding: "8px 12px", display: "flex", alignItems: "center",
+                  gap: 8, fontSize: 12, color: "rgba(232,240,232,0.6)", borderRadius: 4,
+                  textDecoration: "none", fontFamily: "Space Mono, monospace", transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(0,255,136,0.06)"; (e.currentTarget as HTMLAnchorElement).style.color = "#00ff88"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = "none"; (e.currentTarget as HTMLAnchorElement).style.color = "rgba(232,240,232,0.6)"; }}
+              >
+                ↗ VIEW ON ARCSCAN
+              </a>
+
+              {/* Divider */}
+              <div style={{ height: 1, background: "rgba(0,255,136,0.08)", margin: "4px 0" }} />
+
+              {/* Disconnect */}
+              <button
+                onClick={disconnectWallet}
+                style={{
+                  width: "100%", padding: "8px 12px", background: "none", border: "none",
+                  cursor: "pointer", textAlign: "left", fontSize: 12,
+                  color: "rgba(232,240,232,0.6)", borderRadius: 4,
+                  display: "flex", alignItems: "center", gap: 8,
+                  fontFamily: "Space Mono, monospace", transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,51,85,0.08)"; e.currentTarget.style.color = "#ff3355"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "rgba(232,240,232,0.6)"; }}
+              >
+                ✕ DISCONNECT
+              </button>
+            </div>
+          </>
+        )}
       </div>
     );
   }
