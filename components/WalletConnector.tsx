@@ -1,8 +1,9 @@
 "use client";
 import React, { useState } from "react";
+import { useWallet } from "@/context/WalletContext";
 
 export default function WalletConnector() {
-  const [address, setAddress] = useState<string | null>(null);
+  const { address, connect, disconnect } = useWallet();
   const [connecting, setConnecting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -13,32 +14,17 @@ export default function WalletConnector() {
 
   async function connectWallet() {
     if (connecting) return;
-    if (typeof window === "undefined" || !(window as any).ethereum) {
-      alert("No wallet found. Please install MetaMask or Rabby.");
-      return;
-    }
     setConnecting(true);
     try {
-      await (window as any).ethereum.request({
-        method: "wallet_requestPermissions",
-        params: [{ eth_accounts: {} }],
-      });
-      const accounts = await (window as any).ethereum.request({
-        method: "eth_accounts",
-      });
-      if (accounts.length > 0) setAddress(accounts[0]);
+      await connect();
     } catch (e: any) {
-      if (e.code === 4001) {
-        console.log("User rejected connection");
-      } else {
-        console.error(e);
-      }
+      console.error(e);
     }
     setConnecting(false);
   }
 
   async function disconnectWallet() {
-    setAddress(null);
+    disconnect();
     setShowMenu(false);
     if (typeof window !== "undefined" && (window as any).ethereum) {
       try {
@@ -71,7 +57,7 @@ export default function WalletConnector() {
         >
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#00ff88" }} />
           {shortAddress(address)}
-          <span style={{ fontSize: 9, opacity: 0.5 }}>?</span>
+          <span style={{ fontSize: 9, opacity: 0.5 }}>▾</span>
         </button>
 
         {showMenu && (
@@ -88,7 +74,7 @@ export default function WalletConnector() {
                 <div style={{ fontFamily: "Space Mono, monospace", fontSize: 10, color: "rgba(232,240,232,0.5)", wordBreak: "break-all" }}>{address}</div>
               </div>
               <button onClick={copyAddress} style={{ width: "100%", padding: "8px 12px", background: "none", border: "none", cursor: "pointer", textAlign: "left", fontSize: 12, color: copied ? "#00ff88" : "rgba(232,240,232,0.6)", borderRadius: 4, display: "flex", alignItems: "center", gap: 8, fontFamily: "Space Mono, monospace" }}>
-                {copied ? "? COPIED!" : "📋 COPY ADDRESS"}
+                {copied ? "✓ COPIED!" : "📋 COPY ADDRESS"}
               </button>
               <a href={`https://testnet.arcscan.app/address/${address}`} target="_blank" rel="noopener noreferrer" onClick={() => setShowMenu(false)}
                 style={{ width: "100%", padding: "8px 12px", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "rgba(232,240,232,0.6)", borderRadius: 4, textDecoration: "none", fontFamily: "Space Mono, monospace" }}>
