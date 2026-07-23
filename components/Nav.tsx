@@ -47,7 +47,7 @@ export default function Nav() {
           display: block;
           width: 22px;
           height: 2px;
-          background: #00ff88;
+          background: #2563eb;
           border-radius: 2px;
           transition: all 0.25s;
         }
@@ -63,8 +63,8 @@ export default function Nav() {
         .mobile-menu {
           display: none;
           flex-direction: column;
-          background: rgba(4,6,8,0.99);
-          border-top: 1px solid rgba(0,255,136,0.12);
+          background: #ffffff;
+          border-top: 1px solid #e2e6ed;
           padding: 12px 0 20px;
         }
         .mobile-menu.open {
@@ -72,23 +72,22 @@ export default function Nav() {
         }
         .mobile-menu a {
           padding: 12px 24px;
-          font-family: Space Mono, monospace;
           font-size: 12px;
-          font-weight: 700;
-          letter-spacing: 0.1em;
+          font-weight: 600;
+          letter-spacing: 0.08em;
           text-decoration: none;
-          color: rgba(232,240,232,0.5);
+          color: #5a6478;
           border-left: 3px solid transparent;
           transition: all 0.15s;
         }
         .mobile-menu a.active {
-          color: #00ff88;
-          border-left-color: #00ff88;
-          background: rgba(0,255,136,0.05);
+          color: #2563eb;
+          border-left-color: #2563eb;
+          background: #eff4ff;
         }
         .mobile-wallet {
           padding: 12px 24px 0;
-          border-top: 1px solid rgba(0,255,136,0.08);
+          border-top: 1px solid #e2e6ed;
           margin-top: 8px;
         }
         @media (max-width: 768px) {
@@ -101,25 +100,28 @@ export default function Nav() {
         }
       `}</style>
 
-      <div style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(4,6,8,0.97)", borderBottom: "1px solid rgba(0,255,136,0.12)", backdropFilter: "blur(20px)" }}>
+      <div style={{
+        position: "sticky", top: 0, zIndex: 100,
+        background: "rgba(255,255,255,0.95)",
+        borderBottom: "1px solid #e2e6ed",
+        backdropFilter: "blur(20px)",
+      }}>
         <NetworkTicker />
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", height: 56 }}>
 
           {/* Logo */}
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", flexShrink: 0 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, flexShrink: 0, border: "1px solid rgba(0,255,136,0.3)", background: "#040608", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="8.5" stroke="#00ff88" strokeWidth="1.4"/>
-                <ellipse cx="12" cy="12" rx="3.5" ry="8.5" stroke="#00ff88" strokeWidth="1" opacity="0.45"/>
-                <path d="M4 9 Q12 7 20 9" stroke="#00ff88" strokeWidth="1" opacity="0.45" fill="none"/>
-                <path d="M4 15 Q12 17 20 15" stroke="#00ff88" strokeWidth="1" opacity="0.45" fill="none"/>
-                <path d="M7.5 12.8 L10.2 10 L10.2 11.5 L16.5 11.5 L16.5 13.5 L10.2 13.5 L10.2 15 Z" fill="#00ff88"/>
-              </svg>
+            <div style={{
+              width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+              background: "#2563eb",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <span style={{ color: "white", fontWeight: 800, fontSize: 18, letterSpacing: "-0.02em" }}>F</span>
             </div>
             <div>
-              <div style={{ fontFamily: "Space Mono, monospace", fontWeight: 700, fontSize: 13, letterSpacing: "0.08em", color: "#00ff88" }}>FLUXA</div>
-              <div className="nav-logo-subtitle" style={{ fontFamily: "Space Mono, monospace", fontSize: 9, color: "rgba(232,240,232,0.28)", letterSpacing: "0.15em" }}>AUTONOMOUS AGENT · BUILT ON ARC</div>
+              <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: "-0.01em", color: "#0f1117" }}>Fluxa</div>
+              <div className="nav-logo-subtitle" style={{ fontSize: 9, color: "#9199aa", letterSpacing: "0.12em", textTransform: "uppercase" }}>Autonomous Agent · Built on Arc</div>
             </div>
           </Link>
 
@@ -129,19 +131,23 @@ export default function Nav() {
               const active = href === "/" ? path === "/" : path.startsWith(href);
               return (
                 <Link key={href} href={href} style={{
-                  padding: "6px 10px", fontSize: 10, fontFamily: "Space Mono, monospace",
-                  fontWeight: 700, letterSpacing: "0.08em",
-                  color: active ? "#00ff88" : "rgba(232,240,232,0.4)",
-                  textDecoration: "none", transition: "all 0.15s",
-                  borderBottom: active ? "2px solid #00ff88" : "2px solid transparent",
-                  background: active ? "rgba(0,255,136,0.05)" : "transparent",
+                  padding: "6px 10px",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  color: active ? "#2563eb" : "#5a6478",
+                  textDecoration: "none",
+                  transition: "all 0.15s",
+                  borderBottom: active ? "2px solid #2563eb" : "2px solid transparent",
+                  background: active ? "#eff4ff" : "transparent",
+                  borderRadius: "4px 4px 0 0",
                   whiteSpace: "nowrap",
                 }}>{label}</Link>
               );
             })}
           </div>
 
-          {/* Desktop wallet */}
+          {/* Desktop wallet — untouched */}
           <div className="nav-wallet-desktop">
             <WalletConnector />
           </div>
