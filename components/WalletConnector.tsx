@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import React, { useState } from "react";
 
 export default function WalletConnector() {
   const [address, setAddress] = useState<string | null>(null);
