@@ -7,17 +7,14 @@ import NetworkTicker from "./NetworkTicker";
 
 const links = [
   { href: "/", label: "HOME" },
-  { href: "/terminal", label: "TERMINAL" },
-  { href: "/portfolio", label: "PORTFOLIO" },
-  { href: "/history", label: "HISTORY" },
-  { href: "/markets", label: "MARKETS" },
-  { href: "/rates", label: "RATES" },
-  { href: "/convert", label: "CONVERT" },
-  { href: "/fees", label: "FEES" },
+  { href: "/terminal", label: "AGENT" },
+  { href: "/portfolio", label: "WALLET" },
+  { href: "/history", label: "AGENT LOG" },
+  { href: "/markets", label: "SIGNALS" },
   { href: "/payroll", label: "PAYROLL" },
   { href: "/storefront", label: "STOREFRONT" },
   { href: "/tickets", label: "TICKETS" },
-  { href: "/agent", label: "AGENT" },
+  { href: "/agent", label: "RULES" },
   { href: "/nanopay", label: "NANOPAY" },
 ];
 
@@ -121,8 +118,8 @@ export default function Nav() {
               </svg>
             </div>
             <div>
-              <div style={{ fontFamily: "Space Mono, monospace", fontWeight: 700, fontSize: 13, letterSpacing: "0.08em", color: "#00ff88" }}>ARC TERMINAL</div>
-              <div className="nav-logo-subtitle" style={{ fontFamily: "Space Mono, monospace", fontSize: 9, color: "rgba(232,240,232,0.28)", letterSpacing: "0.15em" }}>DEFI TRADING DASHBOARD</div>
+              <div style={{ fontFamily: "Space Mono, monospace", fontWeight: 700, fontSize: 13, letterSpacing: "0.08em", color: "#00ff88" }}>ARC AGENT</div>
+              <div className="nav-logo-subtitle" style={{ fontFamily: "Space Mono, monospace", fontSize: 9, color: "rgba(232,240,232,0.28)", letterSpacing: "0.15em" }}>AGENTIC ECONOMY TERMINAL</div>
             </div>
           </Link>
 
