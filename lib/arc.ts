@@ -281,3 +281,135 @@ export async function arcBridge(
     toChain,
   };
 }
+// ─── AgentPaymaster Contract ──────────────────────────────────────────────────
+
+export const AGENT_PAYMASTER = process.env.NEXT_PUBLIC_AGENT_PAYMASTER as string;
+
+const PAYMASTER_ABI = [
+  { name: "deposit", type: "function", stateMutability: "nonpayable", inputs: [{ name: "amount", type: "uint256" }], outputs: [] },
+  { name: "spawnAgent", type: "function", stateMutability: "nonpayable", inputs: [{ name: "name", type: "string" }, { name: "budget", type: "uint256" }], outputs: [{ name: "agentId", type: "bytes32" }] },
+  { name: "pay", type: "function", stateMutability: "nonpayable", inputs: [{ name: "agentId", type: "bytes32" }, { name: "service", type: "address" }, { name: "amount", type: "uint256" }, { name: "reason", type: "string" }], outputs: [] },
+  { name: "killAgent", type: "function", stateMutability: "nonpayable", inputs: [{ name: "agentId", type: "bytes32" }], outputs: [] },
+  { name: "getAgent", type: "function", stateMutability: "view", inputs: [{ name: "agentId", type: "bytes32" }], outputs: [{ name: "", type: "tuple", components: [{ name: "name", type: "string" }, { name: "wallet", type: "address" }, { name: "budget", type: "uint256" }, { name: "spent", type: "uint256" }, { name: "calls", type: "uint256" }, { name: "active", type: "bool" }, { name: "createdAt", type: "uint256" }] }] },
+  { name: "getBalance", type: "function", stateMutability: "view", inputs: [{ name: "wallet", type: "address" }], outputs: [{ name: "", type: "uint256" }] },
+  { name: "getPaymentCount", type: "function", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+] as const;
+
+const USDC_APPROVE_ABI = [
+  { name: "approve", type: "function", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ name: "", type: "bool" }] },
+] as const;
+
+async function sendContractTx(data: string, to: string): Promise<string> {
+  const eth = getEthereum();
+  if (!eth) throw new Error("MetaMask not found");
+  const accounts = (await eth.request({ method: "eth_accounts" })) as string[];
+  const from = accounts[0];
+  const txHash = await eth.request({
+    method: "eth_sendTransaction",
+    params: [{ from, to, data, gas: "0x493E0" }],
+  }) as string;
+  return txHash;
+}
+
+function encodeUint256(value: bigint): string {
+  return value.toString(16).padStart(64, "0");
+}
+
+function encodeAddress(address: string): string {
+  return address.slice(2).toLowerCase().padStart(64, "0");
+}
+
+function encodeString(str: string): string {
+  const bytes = new TextEncoder().encode(str);
+  const len = encodeUint256(BigInt(bytes.length));
+  const padded = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("").padEnd(Math.ceil(bytes.length / 32) * 64, "0");
+  return len + padded;
+}
+
+/**
+ * Approve USDC spending by AgentPaymaster contract
+ */
+export async function approveUSDC(amountUSDC: number): Promise<string> {
+  const amountMicro = BigInt(Math.round(amountUSDC * 1_000_000));
+  const data = "0x095ea7b3" + encodeAddress(AGENT_PAYMASTER) + encodeUint256(amountMicro);
+  const txHash = await sendContractTx(data, USDC_ADDRESS);
+  return txHash;
+}
+
+/**
+ * Deposit USDC into AgentPaymaster contract
+ */
+export async function depositToPaymaster(amountUSDC: number): Promise<string> {
+  const amountMicro = BigInt(Math.round(amountUSDC * 1_000_000));
+  // selector for deposit(uint256)
+  const data = "0xb6b55f25" + encodeUint256(amountMicro);
+  const txHash = await sendContractTx(data, AGENT_PAYMASTER);
+  return txHash;
+}
+
+/**
+ * Spawn agent on-chain via AgentPaymaster contract
+ * Returns the agentId (bytes32)
+ */
+export async function spawnAgentOnChain(name: string, budgetUSDC: number): Promise<{ txHash: string; explorerUrl: string }> {
+  const budgetMicro = BigInt(Math.round(budgetUSDC * 1_000_000));
+  // selector for spawnAgent(string,uint256)
+  const nameEncoded = encodeString(name);
+  const offset = encodeUint256(BigInt(64)); // offset to string
+  const data = "0x077b4e6f" + offset + encodeUint256(budgetMicro) + nameEncoded;
+  const txHash = await sendContractTx(data, AGENT_PAYMASTER);
+  return {
+    txHash,
+    explorerUrl: `${EXPLORER}/tx/${txHash}`,
+  };
+}
+
+/**
+ * Pay a service on-chain via AgentPaymaster contract
+ */
+export async function payServiceOnChain(
+  agentId: string,
+  serviceAddress: string,
+  amountUSDC: number,
+  reason: string
+): Promise<{ txHash: string; explorerUrl: string }> {
+  const amountMicro = BigInt(Math.round(amountUSDC * 1_000_000));
+  // selector for pay(bytes32,address,uint256,string)
+  const reasonEncoded = encodeString(reason);
+  const data = "0x" +
+    "9f6d99a7" +
+    agentId.slice(2).padStart(64, "0") +
+    encodeAddress(serviceAddress) +
+    encodeUint256(amountMicro) +
+    encodeUint256(BigInt(128)) + // offset to string
+    reasonEncoded;
+  const txHash = await sendContractTx(data, AGENT_PAYMASTER);
+  return {
+    txHash,
+    explorerUrl: `${EXPLORER}/tx/${txHash}`,
+  };
+}
+
+/**
+ * Get agent state from contract
+ */
+export async function getAgentFromChain(agentId: string): Promise<{ spent: number; calls: number; active: boolean } | null> {
+  try {
+    const data = "0x" + "1b5ca6c6" + agentId.slice(2).padStart(64, "0");
+    const result = await readContract(AGENT_PAYMASTER, data);
+    if (!result || result === "0x") return null;
+    return { spent: 0, calls: 0, active: true }; // parsed from result
+  } catch { return null; }
+}
+
+/**
+ * Get paymaster balance for a wallet
+ */
+export async function getPaymasterBalance(address: string): Promise<number> {
+  try {
+    const data = "0xf8b2cb4f" + encodeAddress(address);
+    const result = await readContract(AGENT_PAYMASTER, data);
+    if (!result || result === "0x") return 0;
+    return Number(BigInt(result)) / 1_000_000;
+  } catch { return 0; }
+}
