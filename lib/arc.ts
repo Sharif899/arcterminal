@@ -281,6 +281,7 @@ export async function arcBridge(
     toChain,
   };
 }
+
 // ─── AgentPaymaster Contract ──────────────────────────────────────────────────
 
 export const AGENT_PAYMASTER = process.env.NEXT_PUBLIC_AGENT_PAYMASTER as string;
@@ -299,8 +300,9 @@ const USDC_APPROVE_ABI = [
   { name: "approve", type: "function", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }], outputs: [{ name: "", type: "bool" }] },
 ] as const;
 
+// ── FIXED: cast eth as any to avoid strict EIP1193 type mismatch ──────────────
 async function sendContractTx(data: string, to: string): Promise<string> {
-  const eth = getEthereum();
+  const eth = getEthereum() as any;
   if (!eth) throw new Error("MetaMask not found");
   const accounts = (await eth.request({ method: "eth_accounts" })) as string[];
   const from = accounts[0];
@@ -326,47 +328,27 @@ function encodeString(str: string): string {
   return len + padded;
 }
 
-/**
- * Approve USDC spending by AgentPaymaster contract
- */
 export async function approveUSDC(amountUSDC: number): Promise<string> {
   const amountMicro = BigInt(Math.round(amountUSDC * 1_000_000));
   const data = "0x095ea7b3" + encodeAddress(AGENT_PAYMASTER) + encodeUint256(amountMicro);
-  const txHash = await sendContractTx(data, USDC_ADDRESS);
-  return txHash;
+  return await sendContractTx(data, USDC_ADDRESS);
 }
 
-/**
- * Deposit USDC into AgentPaymaster contract
- */
 export async function depositToPaymaster(amountUSDC: number): Promise<string> {
   const amountMicro = BigInt(Math.round(amountUSDC * 1_000_000));
-  // selector for deposit(uint256)
   const data = "0xb6b55f25" + encodeUint256(amountMicro);
-  const txHash = await sendContractTx(data, AGENT_PAYMASTER);
-  return txHash;
+  return await sendContractTx(data, AGENT_PAYMASTER);
 }
 
-/**
- * Spawn agent on-chain via AgentPaymaster contract
- * Returns the agentId (bytes32)
- */
 export async function spawnAgentOnChain(name: string, budgetUSDC: number): Promise<{ txHash: string; explorerUrl: string }> {
   const budgetMicro = BigInt(Math.round(budgetUSDC * 1_000_000));
-  // selector for spawnAgent(string,uint256)
   const nameEncoded = encodeString(name);
-  const offset = encodeUint256(BigInt(64)); // offset to string
+  const offset = encodeUint256(BigInt(64));
   const data = "0x077b4e6f" + offset + encodeUint256(budgetMicro) + nameEncoded;
   const txHash = await sendContractTx(data, AGENT_PAYMASTER);
-  return {
-    txHash,
-    explorerUrl: `${EXPLORER}/tx/${txHash}`,
-  };
+  return { txHash, explorerUrl: `${EXPLORER}/tx/${txHash}` };
 }
 
-/**
- * Pay a service on-chain via AgentPaymaster contract
- */
 export async function payServiceOnChain(
   agentId: string,
   serviceAddress: string,
@@ -374,37 +356,27 @@ export async function payServiceOnChain(
   reason: string
 ): Promise<{ txHash: string; explorerUrl: string }> {
   const amountMicro = BigInt(Math.round(amountUSDC * 1_000_000));
-  // selector for pay(bytes32,address,uint256,string)
   const reasonEncoded = encodeString(reason);
   const data = "0x" +
     "9f6d99a7" +
     agentId.slice(2).padStart(64, "0") +
     encodeAddress(serviceAddress) +
     encodeUint256(amountMicro) +
-    encodeUint256(BigInt(128)) + // offset to string
+    encodeUint256(BigInt(128)) +
     reasonEncoded;
   const txHash = await sendContractTx(data, AGENT_PAYMASTER);
-  return {
-    txHash,
-    explorerUrl: `${EXPLORER}/tx/${txHash}`,
-  };
+  return { txHash, explorerUrl: `${EXPLORER}/tx/${txHash}` };
 }
 
-/**
- * Get agent state from contract
- */
 export async function getAgentFromChain(agentId: string): Promise<{ spent: number; calls: number; active: boolean } | null> {
   try {
     const data = "0x" + "1b5ca6c6" + agentId.slice(2).padStart(64, "0");
     const result = await readContract(AGENT_PAYMASTER, data);
     if (!result || result === "0x") return null;
-    return { spent: 0, calls: 0, active: true }; // parsed from result
+    return { spent: 0, calls: 0, active: true };
   } catch { return null; }
 }
 
-/**
- * Get paymaster balance for a wallet
- */
 export async function getPaymasterBalance(address: string): Promise<number> {
   try {
     const data = "0xf8b2cb4f" + encodeAddress(address);
