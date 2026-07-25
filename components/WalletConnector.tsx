@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useWallet } from "@/context/WalletContext";
 
 export default function WalletConnector() {
-  const { address, connect, disconnect } = useWallet();
+  const { address, balances, connect, disconnect } = useWallet();
   const [connecting, setConnecting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -45,7 +45,20 @@ export default function WalletConnector() {
 
   if (address) {
     return (
-      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 10 }}>
+
+        {/* USDC Balance */}
+        {balances && (
+          <div style={{
+            fontFamily: "Space Mono, monospace", fontSize: 11, fontWeight: 700,
+            color: "#00ff88", padding: "5px 10px",
+            background: "rgba(0,255,136,0.04)", border: "1px solid rgba(0,255,136,0.12)",
+            borderRadius: 6,
+          }}>
+            ${balances.usdc} USDC
+          </div>
+        )}
+
         <button
           onClick={() => setShowMenu(!showMenu)}
           style={{
@@ -93,7 +106,13 @@ export default function WalletConnector() {
 
   return (
     <button onClick={connectWallet} disabled={connecting}
-      style={{ background: "rgba(0,255,136,0.12)", border: "1px solid rgba(0,255,136,0.3)", borderRadius: 6, padding: "6px 14px", cursor: connecting ? "not-allowed" : "pointer", fontFamily: "Space Mono, monospace", fontSize: 11, fontWeight: 700, color: "#00ff88", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 6 }}>
+      style={{
+        background: "rgba(0,255,136,0.12)", border: "2px solid rgba(0,255,136,0.5)",
+        borderRadius: 6, padding: "7px 16px", cursor: connecting ? "not-allowed" : "pointer",
+        fontFamily: "Space Mono, monospace", fontSize: 12, fontWeight: 900,
+        color: "#00ff88", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 6,
+        boxShadow: "0 0 12px rgba(0,255,136,0.15)",
+      }}>
       {connecting ? "CONNECTING..." : "CONNECT WALLET"}
     </button>
   );
