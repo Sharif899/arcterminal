@@ -40,7 +40,7 @@ export function getKit(): AppKit {
 
 export async function connectWallet(): Promise<string> {
   if (typeof window === "undefined") throw new Error("Browser only");
-  const eth = getEthereum();
+  const eth = getEthereum() as any;
   if (!eth) throw new Error("MetaMask not installed — please install MetaMask");
 
   const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
@@ -86,7 +86,7 @@ export async function connectWallet(): Promise<string> {
 export async function getConnectedAddress(): Promise<string | null> {
   if (typeof window === "undefined") return null;
   if (sessionStorage.getItem('disconnected') === 'true') return null;
-  const eth = getEthereum();
+  const eth = getEthereum() as any;
   if (!eth) return null;
   try {
     const accounts = (await eth.request({ method: "eth_accounts" })) as string[];
@@ -177,7 +177,7 @@ export async function arcSend(
   amount: string,
   token: "USDC" | "EURC" = "USDC"
 ): Promise<TxResult> {
-  const eth = getEthereum();
+  const eth = getEthereum() as any;
   if (!eth) throw new Error("MetaMask not found");
   const formattedAmount = formatAmount(amount);
   const { createViemAdapterFromProvider } = await import("@circle-fin/adapter-viem-v2");
@@ -209,7 +209,7 @@ export async function arcSwap(
   amountIn: string,
   kitKey: string
 ): Promise<TxResult> {
-  const eth = getEthereum();
+  const eth = getEthereum() as any;
   if (!eth) throw new Error("MetaMask not found");
   if (!kitKey) throw new Error("Circle Kit Key required for swap — get it from console.circle.com");
   const formattedAmount = formatAmount(amountIn);
@@ -249,7 +249,7 @@ export async function arcBridge(
   amount: string,
   recipientAddress: string
 ): Promise<TxResult> {
-  const eth = getEthereum();
+  const eth = getEthereum() as any;
   if (!eth) throw new Error("MetaMask not found");
   const formattedAmount = formatAmount(amount);
   const { createViemAdapterFromProvider } = await import("@circle-fin/adapter-viem-v2");
