@@ -114,7 +114,7 @@ export default function NanopayPage() {
         setTotalSpent(t => t + service.pricePerCall); setTotalCalls(t => t + 1);
         setSession(prev => prev ? { ...prev, callsThisSession: prev.callsThisSession + 1, totalSpent: prev.totalSpent + prev.pricePerCall } : null);
       } catch (e: any) { setError(e?.message || 'Stream payment failed'); stopStream(); }
-    }, 10000);
+    }, 30000);
   }
 
   function stopStream() {
