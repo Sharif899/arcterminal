@@ -11,7 +11,7 @@ export default function NetworkTicker() {
   useEffect(() => {
     const loadStats = () => getNetworkStats().then(setStats).catch(() => {});
     loadStats();
-    const si = setInterval(loadStats, 8000);
+    const si = setInterval(loadStats, 30000);
     const ti = setInterval(() => setTime(new Date().toUTCString().slice(17, 25) + ' UTC'), 1000);
     return () => { clearInterval(si); clearInterval(ti); };
   }, []);
